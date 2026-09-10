@@ -1,0 +1,74 @@
+---
+/**
+ * Renders a company menu by location.
+ *
+ * Locations match the v1 `WebMenu.location` values (`header`, `footer_block_1`
+ * and so on), so a company's existing menus work against a v2 header or footer
+ * module without being re-entered.
+ */
+import type { CaraerLocals } from '../locals.ts';
+import CaraerLink from './CaraerLink.astro';
+
+interface Props {
+  location: string;
+  /** How deep to render nested items. 1 renders a flat list. */
+  depth?: number;
+  class?: string;
+}
+
+const { location, depth = 2, class: className } = Astro.props;
+
+const locals = Astro.locals as unknown as CaraerLocals;
+const menu = await locals.getMenu(location);
+const items = menu?.items ?? [];
+---
+
+{
+  items.length > 0 && (
+    <nav class:list={['caraer-menu', className]} aria-label={menu?.title ?? location}>
+      <ul>
+        {items.map((item) => (
+          <li>
+            <CaraerLink href={item.url}>{item.label}</CaraerLink>
+            {depth > 1 && item.items && item.items.length > 0 && (
+              <ul>
+                {item.items.map((child) => (
+                  <li>
+                    <CaraerLink href={child.url}>{child.label}</CaraerLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+<style>
+  .caraer-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .caraer-menu > ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--caraer-space-md);
+  }
+
+  .caraer-menu a {
+    font-family: var(--caraer-font-nav);
+    font-size: var(--caraer-size-nav);
+    font-weight: var(--caraer-weight-nav);
+    line-height: var(--caraer-leading-nav);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .caraer-menu a:hover {
+    color: var(--caraer-color-primary);
+  }
+</style>

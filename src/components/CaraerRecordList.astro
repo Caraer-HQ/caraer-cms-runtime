@@ -1,0 +1,80 @@
+---
+/**
+ * Lists records from an object, for modules such as a vacancy overview.
+ *
+ * Renders server-side so listings are indexable, unlike v1's `preview`
+ * component which fetched client-side after hydration. The module supplies the
+ * card markup through the default slot.
+ */
+import type { CaraerLocals, RecordListQuery } from '../locals.ts';
+
+interface Props extends RecordListQuery {
+  class?: string;
+  /** Rendered when the query returns nothing. */
+  emptyMessage?: string;
+}
+
+const {
+  object,
+  limit = 12,
+  offset = 0,
+  orderBy,
+  filter,
+  class: className,
+  emptyMessage,
+} = Astro.props;
+
+const locals = Astro.locals as unknown as CaraerLocals;
+
+let result = { total: 0, records: [] as Awaited<ReturnType<CaraerLocals['listRecords']>>['records'] };
+let failed = false;
+
+try {
+  result = await locals.listRecords({ object, limit, offset, orderBy, filter });
+} catch {
+  // A listing that cannot load must not take the whole page down with it.
+  failed = true;
+}
+
+// Tag the response so publishing any record of this object purges pages
+// showing the listing.
+locals.tag(`object:${object}`);
+---
+
+{
+  result.records.length > 0 ? (
+    <div class:list={['caraer-record-list', className]} data-total={result.total}>
+      {result.records.map((record) => (
+        <slot name="item" {...record}>
+          <a href={record.url ?? '#'} class="caraer-record-list__fallback">
+            {String(record.parsedProperties?.title ?? record.properties?.title ?? record.uuid)}
+          </a>
+        </slot>
+      ))}
+    </div>
+  ) : (
+    !failed && emptyMessage && <p class="caraer-record-list__empty">{emptyMessage}</p>
+  )
+}
+
+<style>
+  .caraer-record-list {
+    display: grid;
+    gap: var(--caraer-space-lg);
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  }
+
+  .caraer-record-list__fallback {
+    display: block;
+    padding: var(--caraer-space-md);
+    border-radius: var(--caraer-radius-md);
+    background: var(--caraer-color-gray-100);
+    color: var(--caraer-color-font);
+    text-decoration: none;
+  }
+
+  .caraer-record-list__empty {
+    color: var(--caraer-color-gray-700);
+    font-size: var(--caraer-size-small);
+  }
+</style>

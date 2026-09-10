@@ -1,0 +1,309 @@
+---
+/**
+ * Renders a Caraer form.
+ *
+ * Server-rendered as a real `<form>` so it works before JavaScript loads and is
+ * visible to crawlers; a small script upgrades it to an inline async submit.
+ * Submissions go through `/caraer/form/{uuid}` on this server rather than
+ * straight to the backend, which keeps the API base URL, tenant headers and
+ * company uuid off the client.
+ */
+import type { CaraerFormField, CaraerLocals } from '../locals.ts';
+
+interface Props {
+  /** Form uuid or machine name. */
+  form: string;
+  class?: string;
+  submitLabel?: string;
+}
+
+const { form: formRef, class: className, submitLabel } = Astro.props;
+
+const locals = Astro.locals as unknown as CaraerLocals;
+const form = await locals.getForm(formRef);
+
+// A form is a leaf: if it cannot load, render nothing rather than a broken
+// shell. The page around it stays valid.
+const steps = form?.steps ?? [];
+const wizard = Boolean(form?.wizard && steps.length > 1);
+const fields: CaraerFormField[] = form
+  ? wizard
+    ? []
+    : steps.flatMap((step) => step.fields)
+  : [];
+
+type InputType = 'text' | 'email' | 'tel' | 'url' | 'date' | 'number';
+
+/** Maps a Caraer property type/format onto an input type. */
+function inputType(field: CaraerFormField): InputType {
+  const format = (field.format ?? '').toUpperCase();
+  if (format.includes('EMAIL')) return 'email';
+  if (format.includes('PHONE')) return 'tel';
+  if (format.includes('URL')) return 'url';
+  if (format.includes('DATE')) return 'date';
+  if (field.type === 'NUMBER' || field.type === 'INTEGER' || field.type === 'FLOAT') return 'number';
+  return 'text';
+}
+
+function control(field: CaraerFormField): 'textarea' | 'select' | 'checkbox' | 'file' | 'input' {
+  if (field.type === 'BOOLEAN') return 'checkbox';
+  if (field.type === 'FILE' || field.type === 'MULTI_FILE') return 'file';
+  if (field.options && field.options.length > 0) return 'select';
+  if (field.type === 'TEXT_AREA' || field.type === 'LONG_TEXT') return 'textarea';
+  return 'input';
+}
+
+if (form) locals.tag(`form:${form.uuid}`);
+---
+
+{
+  form && (
+    <form
+      class:list={['caraer-form', className]}
+      method="post"
+      action={`/caraer/form/${form.uuid}`}
+      enctype="multipart/form-data"
+      data-caraer-form={form.uuid}
+      data-thank-you={form.thankYouMessage ?? undefined}
+      data-redirect={form.redirectUrl ?? undefined}
+      data-wizard={wizard ? 'true' : undefined}
+    >
+      {wizard && steps.map((step, index) => (
+        <fieldset class="caraer-form__step" data-step={index} hidden={index > 0}>
+          {step.title && <legend>{step.title}</legend>}
+          {step.description && <p>{step.description}</p>}
+          {step.fields.map((field) => {
+            const kind = control(field);
+            const id = `caraer-${form.uuid}-${index}-${field.name}`;
+            return (
+              <div class="caraer-form__field" data-field={field.name}>
+                <label for={id}>
+                  {field.label}
+                  {field.required && <span aria-hidden="true"> *</span>}
+                </label>
+                {kind === 'textarea' && (
+                  <textarea id={id} name={field.name} required={field.required} placeholder={field.placeholder ?? undefined} rows="4" />
+                )}
+                {kind === 'select' && (
+                  <select id={id} name={field.name} required={field.required}>
+                    <option value="">{field.placeholder ?? ''}</option>
+                    {field.options?.map((option) => <option value={option.name}>{option.label}</option>)}
+                  </select>
+                )}
+                {kind === 'checkbox' && <input id={id} name={field.name} type="checkbox" required={field.required} />}
+                {kind === 'file' && (
+                  <input id={id} name={field.name} type="file" required={field.required} multiple={field.type === 'MULTI_FILE'} />
+                )}
+                {kind === 'input' && (
+                  <input id={id} name={field.name} type={inputType(field)} required={field.required} placeholder={field.placeholder ?? undefined} />
+                )}
+                {field.helpText && <small>{field.helpText}</small>}
+              </div>
+            );
+          })}
+        </fieldset>
+      ))}
+      {!wizard && fields.map((field) => {
+        const kind = control(field);
+        const id = `caraer-${form.uuid}-${field.name}`;
+        return (
+          <div class="caraer-form__field" data-field={field.name}>
+            <label for={id}>
+              {field.label}
+              {field.required && <span aria-hidden="true"> *</span>}
+            </label>
+
+            {kind === 'textarea' && (
+              <textarea
+                id={id}
+                name={field.name}
+                required={field.required}
+                placeholder={field.placeholder ?? undefined}
+                rows="4"
+              />
+            )}
+
+            {kind === 'select' && (
+              <select id={id} name={field.name} required={field.required}>
+                <option value="">{field.placeholder ?? ''}</option>
+                {field.options?.map((option) => <option value={option.name}>{option.label}</option>)}
+              </select>
+            )}
+
+            {kind === 'checkbox' && (
+              <input id={id} name={field.name} type="checkbox" required={field.required} />
+            )}
+
+            {kind === 'file' && (
+              <input
+                id={id}
+                name={field.name}
+                type="file"
+                required={field.required}
+                multiple={field.type === 'MULTI_FILE'}
+              />
+            )}
+
+            {kind === 'input' && (
+              <input
+                id={id}
+                name={field.name}
+                type={inputType(field)}
+                required={field.required}
+                placeholder={field.placeholder ?? undefined}
+              />
+            )}
+
+            {field.helpText && <small>{field.helpText}</small>}
+          </div>
+        );
+      })}
+
+      {wizard && (
+        <div class="caraer-form__nav">
+          <button type="button" data-wizard-prev hidden>Terug</button>
+          <button type="button" data-wizard-next>Volgende</button>
+        </div>
+      )}
+      <button type="submit">{submitLabel ?? form.submitLabel ?? 'Verzenden'}</button>
+      <p class="caraer-form__status" role="status" aria-live="polite" hidden />
+    </form>
+  )
+}
+
+<script>
+  // Progressive enhancement: submit inline and show the thank-you message in
+  // place. Without JS the plain POST still works and the route redirects.
+  document.querySelectorAll<HTMLFormElement>('form[data-caraer-form]').forEach((form) => {
+    if (form.dataset.caraerBound) return;
+    form.dataset.caraerBound = 'true';
+
+    const status = form.querySelector<HTMLParagraphElement>('.caraer-form__status');
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const steps = [...form.querySelectorAll<HTMLElement>('[data-step]')];
+    let step = 0;
+    const prev = form.querySelector<HTMLButtonElement>('[data-wizard-prev]');
+    const next = form.querySelector<HTMLButtonElement>('[data-wizard-next]');
+    const showStep = () => {
+      steps.forEach((node, index) => {
+        node.hidden = index !== step;
+      });
+      if (prev) prev.hidden = step === 0;
+      if (next) next.hidden = step >= steps.length - 1;
+      if (button) button.hidden = form.dataset.wizard === 'true' && step < steps.length - 1;
+    };
+    if (form.dataset.wizard === 'true') {
+      showStep();
+      next?.addEventListener('click', () => {
+        const current = steps[step];
+        const invalid = current?.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+          ':invalid',
+        );
+        if (invalid) {
+          invalid.reportValidity();
+          return;
+        }
+        step += 1;
+        showStep();
+      });
+      prev?.addEventListener('click', () => {
+        step = Math.max(0, step - 1);
+        showStep();
+      });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (button) button.disabled = true;
+
+      try {
+        const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+        if (!response.ok) throw new Error(String(response.status));
+
+        const redirect = form.dataset.redirect;
+        if (redirect) {
+          window.location.assign(redirect);
+          return;
+        }
+
+        form.reset();
+        if (status) {
+          status.hidden = false;
+          status.textContent = form.dataset.thankYou ?? 'Bedankt voor je inzending.';
+        }
+      } catch {
+        if (status) {
+          status.hidden = false;
+          status.textContent = 'Er ging iets mis. Probeer het opnieuw.';
+        }
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .caraer-form {
+    display: grid;
+    gap: var(--caraer-space-md);
+  }
+
+  .caraer-form__field {
+    display: grid;
+    gap: var(--caraer-space-2xs);
+  }
+
+  .caraer-form label {
+    font-family: var(--caraer-font-body);
+    font-size: var(--caraer-size-small);
+    font-weight: 600;
+    color: var(--caraer-color-font);
+  }
+
+  .caraer-form input,
+  .caraer-form select,
+  .caraer-form textarea {
+    font: inherit;
+    padding: var(--caraer-space-xs) var(--caraer-space-sm);
+    border: 1px solid var(--caraer-color-gray-400);
+    border-radius: var(--caraer-radius-md);
+    background: var(--caraer-color-white);
+    color: var(--caraer-color-font);
+  }
+
+  .caraer-form input[type='checkbox'] {
+    justify-self: start;
+    padding: 0;
+  }
+
+  .caraer-form input:focus-visible,
+  .caraer-form select:focus-visible,
+  .caraer-form textarea:focus-visible {
+    outline: 2px solid var(--caraer-color-primary);
+    outline-offset: 1px;
+  }
+
+  .caraer-form small {
+    color: var(--caraer-color-gray-700);
+    font-size: var(--caraer-size-small);
+  }
+
+  .caraer-form button {
+    justify-self: start;
+    font-family: var(--caraer-font-button);
+    font-size: var(--caraer-size-button);
+    font-weight: var(--caraer-weight-button);
+    padding: var(--caraer-space-sm) var(--caraer-space-lg);
+    border: 0;
+    border-radius: var(--caraer-radius-md);
+    background: var(--caraer-color-primary);
+    color: var(--caraer-color-white);
+    cursor: pointer;
+  }
+
+  .caraer-form button[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+</style>

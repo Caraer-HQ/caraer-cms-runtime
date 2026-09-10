@@ -1,0 +1,41 @@
+---
+/**
+ * Renders a link.
+ *
+ * Site-internal paths get the active locale prefix, external links get
+ * `rel="noopener"`, and inside the builder iframe navigation is suppressed so
+ * clicking a link selects the module instead of navigating away from the page
+ * being edited.
+ */
+import type { CaraerLocals } from '../locals.ts';
+
+interface Props {
+  href: string | null | undefined;
+  target?: string;
+  rel?: string;
+  class?: string;
+  'aria-label'?: string;
+}
+
+const { href, target, rel, class: className, ...rest } = Astro.props;
+
+const locals = Astro.locals as unknown as CaraerLocals;
+const isExternal = !!href && /^([a-z]+:)?\/\//i.test(href);
+const isSpecial = !!href && /^(mailto:|tel:|#)/i.test(href);
+const resolved = href && !isExternal && !isSpecial ? locals.localePath(href) : href;
+
+const computedRel = rel ?? (isExternal ? 'noopener noreferrer' : undefined);
+const computedTarget = target ?? (isExternal ? '_blank' : undefined);
+const inEditor = locals.editor !== null;
+---
+
+<a
+  href={resolved ?? undefined}
+  target={computedTarget}
+  rel={computedRel}
+  class={className}
+  data-caraer-editor-inert={inEditor ? '' : undefined}
+  {...rest}
+>
+  <slot />
+</a>

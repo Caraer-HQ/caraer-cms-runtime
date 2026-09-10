@@ -1,0 +1,54 @@
+---
+/**
+ * Renders a CMS image.
+ *
+ * Handles the two things a module author should not have to think about:
+ * asset keys from the Caraer file API are resolved to stable cacheable URLs
+ * (the backend hands out signed DigitalOcean Spaces links that expire), and
+ * SVGs are emitted without the sizing attributes that break their viewBox.
+ */
+import type { CaraerLocals } from '../locals.ts';
+
+interface Props {
+  /** A Caraer asset key or an absolute URL. */
+  src: string | null | undefined;
+  alt?: string;
+  width?: number | string;
+  height?: number | string;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+  sizes?: string;
+  class?: string;
+}
+
+const {
+  src,
+  alt = '',
+  width,
+  height,
+  loading = 'lazy',
+  fetchpriority,
+  sizes,
+  class: className,
+} = Astro.props;
+
+const locals = Astro.locals as unknown as CaraerLocals;
+const resolved = locals.assetUrl(src);
+const isSvg = resolved?.split('?')[0].toLowerCase().endsWith('.svg') ?? false;
+---
+
+{
+  resolved && (
+    <img
+      src={resolved}
+      alt={alt}
+      class={className}
+      loading={loading}
+      decoding="async"
+      fetchpriority={fetchpriority}
+      sizes={sizes}
+      width={isSvg ? undefined : width}
+      height={isSvg ? undefined : height}
+    />
+  )
+}

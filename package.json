@@ -1,0 +1,43 @@
+{
+  "name": "@caraer/cms-runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Caraer CMS v2 module contract and platform components.",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Caraer-HQ/caraer-cms-runtime.git"
+  },
+  "homepage": "https://github.com/Caraer-HQ/caraer-cms-runtime",
+  "bugs": {
+    "url": "https://github.com/Caraer-HQ/caraer-cms-runtime/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./CaraerForm.astro": "./src/components/CaraerForm.astro",
+    "./CaraerRecordList.astro": "./src/components/CaraerRecordList.astro",
+    "./CaraerImage.astro": "./src/components/CaraerImage.astro",
+    "./CaraerLink.astro": "./src/components/CaraerLink.astro",
+    "./CaraerRichText.astro": "./src/components/CaraerRichText.astro",
+    "./CaraerMenu.astro": "./src/components/CaraerMenu.astro"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "@caraer/cms-tokens": "^0.1.0",
+    "astro": "^7.0.0"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.0",
+    "@caraer/cms-tokens": "^0.1.0"
+  },
+  "keywords": [
+    "caraer",
+    "caraer-cms-module"
+  ]
+}

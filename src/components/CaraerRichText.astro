@@ -1,0 +1,84 @@
+---
+/**
+ * Renders editor-authored copy.
+ *
+ * Accepts HTML, markdown or plain text and normalises to HTML, then applies
+ * typography bound to the company's design tokens so prose in a module looks
+ * like prose everywhere else on the site.
+ */
+import type { HTMLTag } from 'astro/types';
+
+import { renderRichText } from '../markdown.ts';
+
+interface Props {
+  value: unknown;
+  as?: HTMLTag;
+  class?: string;
+}
+
+const { value, as: Tag = 'div', class: className } = Astro.props as Props;
+const html = await renderRichText(value);
+---
+
+{html && <Tag class:list={['caraer-prose', className]} set:html={html} />}
+
+<style>
+  .caraer-prose {
+    font-family: var(--caraer-font-body);
+    font-size: var(--caraer-size-body);
+    font-weight: var(--caraer-weight-body);
+    line-height: var(--caraer-leading-body);
+    color: var(--caraer-color-font);
+  }
+
+  .caraer-prose :global(> * + *) {
+    margin-block-start: var(--caraer-space-md);
+  }
+
+  .caraer-prose :global(h1),
+  .caraer-prose :global(h2),
+  .caraer-prose :global(h3),
+  .caraer-prose :global(h4),
+  .caraer-prose :global(h5),
+  .caraer-prose :global(h6) {
+    margin-block-start: var(--caraer-space-xl);
+    margin-block-end: var(--caraer-space-xs);
+  }
+
+  .caraer-prose :global(h1) {
+    font-family: var(--caraer-font-h1);
+    font-size: var(--caraer-size-h1);
+    font-weight: var(--caraer-weight-h1);
+    line-height: var(--caraer-leading-h1);
+  }
+
+  .caraer-prose :global(h2) {
+    font-family: var(--caraer-font-h2);
+    font-size: var(--caraer-size-h2);
+    font-weight: var(--caraer-weight-h2);
+    line-height: var(--caraer-leading-h2);
+  }
+
+  .caraer-prose :global(h3) {
+    font-family: var(--caraer-font-h3);
+    font-size: var(--caraer-size-h3);
+    font-weight: var(--caraer-weight-h3);
+    line-height: var(--caraer-leading-h3);
+  }
+
+  .caraer-prose :global(a) {
+    color: var(--caraer-color-primary);
+    text-underline-offset: 0.15em;
+  }
+
+  .caraer-prose :global(ul),
+  .caraer-prose :global(ol) {
+    padding-inline-start: var(--caraer-space-lg);
+  }
+
+  .caraer-prose :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--caraer-radius-md);
+  }
+</style>
