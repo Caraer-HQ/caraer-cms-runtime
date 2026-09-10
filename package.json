@@ -1,6 +1,6 @@
 {
   "name": "@caraer/cms-runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Caraer CMS v2 module contract and platform components.",
   "license": "UNLICENSED",
@@ -17,6 +17,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./package.json": "./package.json",
     "./components": "./src/components/index.ts",
     "./CaraerForm.astro": "./src/components/CaraerForm.astro",
     "./CaraerRecordList.astro": "./src/components/CaraerRecordList.astro",
@@ -29,12 +30,12 @@
     "src"
   ],
   "peerDependencies": {
-    "@caraer/cms-tokens": "^0.1.0",
+    "@caraer/cms-tokens": "^0.1.1",
     "astro": "^7.0.0"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.0",
-    "@caraer/cms-tokens": "^0.1.0"
+    "@caraer/cms-tokens": "github:Caraer-HQ/caraer-cms-tokens#v0.1.1"
   },
   "keywords": [
     "caraer",
