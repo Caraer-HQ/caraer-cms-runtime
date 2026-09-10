@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.0",
-    "@caraer/cms-tokens": "github:Caraer-HQ/caraer-cms-tokens#v0.1.1"
+    "@caraer/cms-tokens": "^0.1.1"
   },
   "keywords": [
     "caraer",
