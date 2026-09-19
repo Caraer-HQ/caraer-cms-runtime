@@ -16,7 +16,8 @@ export type PagePatch =
   | { op: 'move_module'; moduleId: string; toIndex: number }
   | { op: 'replace_modules'; modules: PageModuleInstance[] }
   | { op: 'set_hidden'; moduleId: string; hidden: boolean }
-  | { op: 'set_seo'; seo: PageSeo };
+  | { op: 'set_seo'; seo: PageSeo }
+  | { op: 'set_module'; moduleId: string; ref: string; fields?: Record<string, unknown> };
 
 /** A batch of patches applied atomically, producing one new revision. */
 export interface PageRevision {
@@ -33,6 +34,7 @@ export function affectedModuleIds(patch: PagePatch): string[] | 'all' {
     case 'set_field':
     case 'set_fields':
     case 'set_hidden':
+    case 'set_module':
     case 'remove_module':
       return [patch.moduleId];
     case 'add_module':
@@ -106,6 +108,16 @@ export function applyPatch(doc: PageDocument, patch: PagePatch): PageDocument {
 
     case 'set_seo':
       return { ...doc, seo: { ...doc.seo, ...patch.seo } };
+
+    case 'set_module':
+      return {
+        ...doc,
+        modules: doc.modules.map((m) =>
+          m.id === patch.moduleId
+            ? { ...m, module: patch.ref, fields: patch.fields ? { ...patch.fields } : m.fields }
+            : m,
+        ),
+      };
   }
 }
 
