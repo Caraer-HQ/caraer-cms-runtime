@@ -1,5 +1,5 @@
-import type { CaraerTokenSet } from '@caraer/cms-tokens';
-import type { CompanyContext, EditorContext, PageContext } from './document.ts';
+import type { CaraerTokenSet } from "@caraer/cms-tokens";
+import type { CompanyContext, EditorContext, PageContext } from "./document.ts";
 
 export interface CaraerMenuItem {
   label: string;
