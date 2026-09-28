@@ -8,7 +8,7 @@
  * straight to the backend, which keeps the API base URL, tenant headers and
  * company uuid off the client.
  */
-import type { CaraerFormField, CaraerLocals } from '../locals.ts';
+import type { CaraerFormField, CaraerFormStep, CaraerLocals } from '../locals.ts';
 
 interface Props {
   /** Form uuid or machine name. */
@@ -26,30 +26,52 @@ const form = await locals.getForm(formRef);
 // shell. The page around it stays valid.
 const steps = form?.steps ?? [];
 const wizard = Boolean(form?.wizard && steps.length > 1);
-const fields: CaraerFormField[] = form
-  ? wizard
-    ? []
-    : steps.flatMap((step) => step.fields)
-  : [];
+
+/** Fields that share a builder row stay on one line. Older payloads stack. */
+function layoutRows(step: CaraerFormStep): CaraerFormField[][] {
+  const laidOut = step.rows?.filter((row) => row.length > 0);
+  if (laidOut && laidOut.length > 0) return laidOut;
+  return step.fields.map((field) => [field]);
+}
 
 type InputType = 'text' | 'email' | 'tel' | 'url' | 'date' | 'number';
 
+function typeName(field: CaraerFormField): string {
+  return (field.type ?? '').toUpperCase().replace(/-/g, '_');
+}
+
+function formatName(field: CaraerFormField): string {
+  return (field.format ?? '').toUpperCase().replace(/-/g, '_');
+}
+
 /** Maps a Caraer property type/format onto an input type. */
 function inputType(field: CaraerFormField): InputType {
-  const format = (field.format ?? '').toUpperCase();
+  const format = formatName(field);
+  const type = typeName(field);
   if (format.includes('EMAIL')) return 'email';
   if (format.includes('PHONE')) return 'tel';
   if (format.includes('URL')) return 'url';
   if (format.includes('DATE')) return 'date';
-  if (field.type === 'NUMBER' || field.type === 'INTEGER' || field.type === 'FLOAT') return 'number';
+  if (type === 'NUMBER' || type === 'INTEGER' || type === 'FLOAT') return 'number';
   return 'text';
 }
 
 function control(field: CaraerFormField): 'textarea' | 'select' | 'checkbox' | 'file' | 'input' {
-  if (field.type === 'BOOLEAN') return 'checkbox';
-  if (field.type === 'FILE' || field.type === 'MULTI_FILE') return 'file';
+  const type = typeName(field);
+  const format = formatName(field);
+  if (type === 'BOOLEAN' || type === 'CHECKBOX') return 'checkbox';
+  if (type === 'FILE' || type === 'MULTI_FILE' || format === 'FILE' || format === 'MULTI_FILE') {
+    return 'file';
+  }
   if (field.options && field.options.length > 0) return 'select';
-  if (field.type === 'TEXT_AREA' || field.type === 'LONG_TEXT') return 'textarea';
+  if (
+    type === 'TEXT_AREA' ||
+    type === 'LONG_TEXT' ||
+    format === 'MULTI_LINE' ||
+    format.includes('MULTI_LINE')
+  ) {
+    return 'textarea';
+  }
   return 'input';
 }
 
@@ -72,7 +94,9 @@ if (form) locals.tag(`form:${form.uuid}`);
         <fieldset class="caraer-form__step" data-step={index} hidden={index > 0}>
           {step.title && <legend>{step.title}</legend>}
           {step.description && <p>{step.description}</p>}
-          {step.fields.map((field) => {
+          {layoutRows(step).map((row) => (
+            <div class="caraer-form__row" style={`--form-columns: ${row.length}`}>
+              {row.map((field) => {
             const kind = control(field);
             const id = `caraer-${form.uuid}-${index}-${field.name}`;
             return (
@@ -101,9 +125,13 @@ if (form) locals.tag(`form:${form.uuid}`);
               </div>
             );
           })}
+            </div>
+          ))}
         </fieldset>
       ))}
-      {!wizard && fields.map((field) => {
+      {!wizard && steps.flatMap((step) => layoutRows(step)).map((row) => (
+        <div class="caraer-form__row" style={`--form-columns: ${row.length}`}>
+          {row.map((field) => {
         const kind = control(field);
         const id = `caraer-${form.uuid}-${field.name}`;
         return (
@@ -158,6 +186,8 @@ if (form) locals.tag(`form:${form.uuid}`);
           </div>
         );
       })}
+        </div>
+      ))}
 
       {wizard && (
         <div class="caraer-form__nav">
@@ -249,9 +279,17 @@ if (form) locals.tag(`form:${form.uuid}`);
     gap: var(--caraer-space-md);
   }
 
+  .caraer-form__row {
+    display: grid;
+    grid-template-columns: repeat(var(--form-columns, 1), minmax(0, 1fr));
+    gap: var(--caraer-space-md);
+    align-items: start;
+  }
+
   .caraer-form__field {
     display: grid;
     gap: var(--caraer-space-2xs);
+    min-width: 0;
   }
 
   .caraer-form label {
@@ -265,6 +303,8 @@ if (form) locals.tag(`form:${form.uuid}`);
   .caraer-form select,
   .caraer-form textarea {
     font: inherit;
+    width: 100%;
+    box-sizing: border-box;
     padding: var(--caraer-space-xs) var(--caraer-space-sm);
     border: 1px solid var(--caraer-color-gray-400);
     border-radius: var(--caraer-radius-md);
@@ -274,7 +314,14 @@ if (form) locals.tag(`form:${form.uuid}`);
 
   .caraer-form input[type='checkbox'] {
     justify-self: start;
+    width: auto;
     padding: 0;
+  }
+
+  @media (max-width: 640px) {
+    .caraer-form__row {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   .caraer-form input:focus-visible,

@@ -30,6 +30,8 @@ export interface CaraerFormStep {
   title?: string | null;
   description?: string | null;
   fields: CaraerFormField[];
+  /** Builder rows. Fields in one inner list sit side by side. */
+  rows?: CaraerFormField[][];
 }
 
 export interface CaraerForm {
@@ -48,6 +50,12 @@ export interface RecordListQuery {
   limit?: number;
   offset?: number;
   orderBy?: string;
+  /** When true (the default on the public API), unpublished pages are omitted. */
+  publishedOnly?: boolean;
+  /** Case-insensitive substring. Blank means no search clause. */
+  search?: string;
+  /** Named text fields to search. Empty scans every string property. */
+  searchProperties?: string[];
   filter?: Record<string, unknown>;
 }
 

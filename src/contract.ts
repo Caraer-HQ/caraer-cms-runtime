@@ -14,22 +14,28 @@
  * the Flutter builder renders module fields with the widgets it already has.
  */
 export const MODULE_FIELD_TYPES = [
-  'SINGLE_LINE',
-  'MULTI_LINE',
-  'SINGLE_SELECT',
-  'MULTI_SELECT',
-  'RECORD_SINGLE_SELECT',
-  'RECORD_MULTI_SELECT',
-  'OBJECT_SINGLE_SELECT',
-  'OBJECT_MULTI_SELECT',
-  'PROPERTY_SINGLE_SELECT',
-  'PROPERTY_MULTI_SELECT',
-  'SWITCH',
-  'MAPPING',
-  'FILE',
-  'MULTI_FILE',
-  'SECRET',
-  'ACTION',
+  "SINGLE_LINE",
+  "MULTI_LINE",
+  "SINGLE_SELECT",
+  "MULTI_SELECT",
+  "RECORD_SINGLE_SELECT",
+  "RECORD_MULTI_SELECT",
+  "FORM_SINGLE_SELECT",
+  "OBJECT_SINGLE_SELECT",
+  "OBJECT_MULTI_SELECT",
+  "PROPERTY_SINGLE_SELECT",
+  "PROPERTY_MULTI_SELECT",
+  "SWITCH",
+  "MAPPING",
+  "FILE",
+  "MULTI_FILE",
+  /**
+   * A list of objects. Library authors set `min` / `max` and `itemFields`;
+   * the editor pages through one item at a time instead of growing a form.
+   */
+  "REPEATABLE",
+  "SECRET",
+  "ACTION",
 ] as const;
 
 export type ModuleFieldType = (typeof MODULE_FIELD_TYPES)[number];
@@ -41,15 +47,18 @@ export type ModuleFieldType = (typeof MODULE_FIELD_TYPES)[number];
  * `ACTION` is a button that invokes a serverless function from a settings
  * screen. Both are rejected by `caraer apps validate`.
  */
-export const DISALLOWED_MODULE_FIELD_TYPES: readonly ModuleFieldType[] = ['SECRET', 'ACTION'];
+export const DISALLOWED_MODULE_FIELD_TYPES: readonly ModuleFieldType[] = [
+  "SECRET",
+  "ACTION",
+];
 
 export type ModuleFieldOperator =
-  | 'EQUALS'
-  | 'NOT_EQUALS'
-  | 'IN'
-  | 'NOT_IN'
-  | 'IS_SET'
-  | 'IS_NOT_SET';
+  | "EQUALS"
+  | "NOT_EQUALS"
+  | "IN"
+  | "NOT_IN"
+  | "IS_SET"
+  | "IS_NOT_SET";
 
 export interface ModuleFieldCondition {
   field: string;
@@ -61,6 +70,8 @@ export interface ModuleFieldOption {
   name: string;
   label: string;
   helpText?: string;
+  /** Screenshot URL, or a sketch id such as `card-orb` / `card-badge`. */
+  preview?: string;
 }
 
 export interface ModuleField {
@@ -73,8 +84,22 @@ export interface ModuleField {
   defaultValue?: unknown;
   /** Hidden from the editor sidebar but still stored and passed to the module. */
   hidden?: boolean;
+  /**
+   * When true, the editor shows this field under a collapsed Advanced settings
+   * section. Content (text, images, icons) stays in the main list; styling
+   * belongs here. Unlike `hidden`, the field is still editable once opened,
+   * and the value is always stored.
+   */
+  advanced?: boolean;
   options?: ModuleFieldOption[];
   visibleWhen?: ModuleFieldCondition[];
+  itemFields?: ModuleField[];
+  /** Inclusive lower bound for a `REPEATABLE` list. Defaults to 0. */
+  min?: number;
+  /** Inclusive upper bound for a `REPEATABLE` list. Defaults to 20. */
+  max?: number;
+  /** Singular label used in the editor pager, e.g. "Step" or "Card". */
+  itemLabel?: string;
   /**
    * Restricts an `OBJECT_*` or `PROPERTY_*` field to a subset.
    *
@@ -92,10 +117,16 @@ export interface ModuleField {
  * one module; `header` and `footer` fill the site-wide slots that
  * `WebsiteSettings` already models for v1.
  */
-export type ModuleKind = 'section' | 'page' | 'header' | 'footer';
+export type ModuleKind = "section" | "page" | "header" | "footer";
 
 /** UI frameworks a module may use for islands. */
-export const MODULE_FRAMEWORKS = ['react', 'preact', 'solid', 'svelte', 'vue'] as const;
+export const MODULE_FRAMEWORKS = [
+  "react",
+  "preact",
+  "solid",
+  "svelte",
+  "vue",
+] as const;
 export type ModuleFramework = (typeof MODULE_FRAMEWORKS)[number];
 
 /**
@@ -103,7 +134,11 @@ export type ModuleFramework = (typeof MODULE_FRAMEWORKS)[number];
  * them apart by path. Islands must live in a folder named after the framework.
  * Svelte and Vue are unambiguous by file extension.
  */
-export const JSX_FRAMEWORKS: readonly ModuleFramework[] = ['react', 'preact', 'solid'];
+export const JSX_FRAMEWORKS: readonly ModuleFramework[] = [
+  "react",
+  "preact",
+  "solid",
+];
 
 /**
  * How the library picker groups a module.
@@ -112,14 +147,14 @@ export const JSX_FRAMEWORKS: readonly ModuleFramework[] = ['react', 'preact', 's
  * different heading depending on which app shipped it.
  */
 export const MODULE_CATEGORIES = [
-  'hero',
-  'content',
-  'listing',
-  'layout',
-  'media',
-  'form',
-  'cta',
-  'social_proof',
+  "hero",
+  "content",
+  "listing",
+  "layout",
+  "media",
+  "form",
+  "cta",
+  "social_proof",
 ] as const;
 
 export type ModuleCategory = (typeof MODULE_CATEGORIES)[number];
@@ -155,8 +190,10 @@ export function moduleRef(appName: string, moduleName: string): ModuleRef {
   return `${appName}/${moduleName}`;
 }
 
-export function parseModuleRef(ref: ModuleRef): { app: string; module: string } | null {
-  const slash = ref.indexOf('/');
+export function parseModuleRef(
+  ref: ModuleRef,
+): { app: string; module: string } | null {
+  const slash = ref.indexOf("/");
   if (slash <= 0 || slash === ref.length - 1) return null;
   return { app: ref.slice(0, slash), module: ref.slice(slash + 1) };
 }
