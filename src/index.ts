@@ -2,12 +2,16 @@ export {
   DISALLOWED_MODULE_FIELD_TYPES,
   flattenModuleFields,
   isModuleFieldGroup,
+  isModuleKind,
+  isSiteChromeModuleKind,
   JSX_FRAMEWORKS,
   MODULE_FIELD_TYPES,
   MODULE_FRAMEWORKS,
+  MODULE_KINDS,
   moduleRef,
   parseModuleRef,
-} from './contract.ts';
+  SITE_CHROME_MODULE_KINDS,
+} from "./contract.ts";
 
 export type {
   ModuleField,
@@ -21,9 +25,10 @@ export type {
   ModuleKind,
   ModuleManifest,
   ModuleRef,
-} from './contract.ts';
+  SiteChromeModuleKind,
+} from "./contract.ts";
 
-export { emptyPageDocument } from './document.ts';
+export { emptyPageDocument } from "./document.ts";
 
 export type {
   CaraerRecord,
@@ -34,17 +39,21 @@ export type {
   PageDocument,
   PageModuleInstance,
   PageSeo,
-} from './document.ts';
+} from "./document.ts";
 
-export { affectedModuleIds, applyPatch, applyRevision } from './patch.ts';
-export type { PagePatch, PageRevision } from './patch.ts';
+export { affectedModuleIds, applyPatch, applyRevision } from "./patch.ts";
+export type { PagePatch, PageRevision } from "./patch.ts";
 
-export { isFieldVisible, resolveFieldValues } from './fields.ts';
+export { isFieldVisible, resolveFieldValues } from "./fields.ts";
 
-export { moduleHasIslands, renderModuleErrorHtml, withModuleBoundary } from './with-module-boundary.ts';
-export type { ModuleBoundaryOptions } from './with-module-boundary.ts';
+export {
+  moduleHasIslands,
+  renderModuleErrorHtml,
+  withModuleBoundary,
+} from "./with-module-boundary.ts";
+export type { ModuleBoundaryOptions } from "./with-module-boundary.ts";
 
-export type { CaraerWindowApi } from './global.d.ts';
+export type { CaraerWindowApi } from "./global.d.ts";
 
 export type {
   CaraerForm,
@@ -55,4 +64,4 @@ export type {
   CaraerMenuItem,
   RecordListQuery,
   RecordListResult,
-} from './locals.ts';
+} from "./locals.ts";

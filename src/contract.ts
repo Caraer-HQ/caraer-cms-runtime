@@ -127,15 +127,19 @@ export interface ModuleFieldGroup {
 
 export type ModuleFieldOrGroup = ModuleField | ModuleFieldGroup;
 
-export function isModuleFieldGroup(item: ModuleFieldOrGroup): item is ModuleFieldGroup {
+export function isModuleFieldGroup(
+  item: ModuleFieldOrGroup,
+): item is ModuleFieldGroup {
   return (
-    typeof (item as ModuleFieldGroup).group === 'string' &&
-    (item as ModuleFieldGroup).group.trim() !== '' &&
+    typeof (item as ModuleFieldGroup).group === "string" &&
+    (item as ModuleFieldGroup).group.trim() !== "" &&
     Array.isArray((item as ModuleFieldGroup).fields)
   );
 }
 
-export function flattenModuleFields(items: ModuleFieldOrGroup[]): ModuleField[] {
+export function flattenModuleFields(
+  items: ModuleFieldOrGroup[],
+): ModuleField[] {
   const out: ModuleField[] = [];
   for (const item of items) {
     if (isModuleFieldGroup(item)) out.push(...item.fields);
@@ -148,10 +152,40 @@ export function flattenModuleFields(items: ModuleFieldOrGroup[]): ModuleField[] 
  * What a module is used for.
  *
  * `section` composes into a page alongside others; `page` is a complete page in
- * one module; `header` and `footer` fill the site-wide slots that
- * `WebsiteSettings` already models for v1.
+ * one module; `header`, `footer`, and `cookie_banner` fill the site-wide slots
+ * that `WebsiteSettings` models for v1/v2 chrome.
  */
-export type ModuleKind = "section" | "page" | "header" | "footer";
+export const MODULE_KINDS = [
+  "section",
+  "page",
+  "header",
+  "footer",
+  "cookie_banner",
+] as const;
+
+export type ModuleKind = (typeof MODULE_KINDS)[number];
+
+/** Kinds used for site-wide header, footer, and cookie consent modules. */
+export const SITE_CHROME_MODULE_KINDS = [
+  "header",
+  "footer",
+  "cookie_banner",
+] as const satisfies readonly ModuleKind[];
+
+export type SiteChromeModuleKind = (typeof SITE_CHROME_MODULE_KINDS)[number];
+
+export function isModuleKind(value: string): value is ModuleKind {
+  return (MODULE_KINDS as readonly string[]).includes(value);
+}
+
+export function isSiteChromeModuleKind(
+  kind: ModuleKind | undefined,
+): kind is SiteChromeModuleKind {
+  return (
+    kind !== undefined &&
+    (SITE_CHROME_MODULE_KINDS as readonly ModuleKind[]).includes(kind)
+  );
+}
 
 /** UI frameworks a module may use for islands. */
 export const MODULE_FRAMEWORKS = [
