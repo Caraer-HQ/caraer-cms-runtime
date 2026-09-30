@@ -8,16 +8,33 @@
  * straight to the backend, which keeps the API base URL, tenant headers and
  * company uuid off the client.
  */
-import type { CaraerFormField, CaraerLocals } from '../locals.ts';
+import type { CaraerFormField, CaraerFormStep, CaraerLocals } from '../locals.ts';
 
 interface Props {
   /** Form uuid or machine name. */
   form: string;
   class?: string;
   submitLabel?: string;
+  /** Page record. Sent so form relations such as the vacancy link can be created. */
+  recordUuid?: string | null;
+  /** Optional URL or path. Used after a successful submission. */
+  redirect?: string | null;
 }
 
-const { form: formRef, class: className, submitLabel } = Astro.props;
+const { form: formRef, class: className, submitLabel, recordUuid, redirect } = Astro.props;
+
+function destination(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol === 'http:' || url.protocol === 'https:') return url.toString();
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 const locals = Astro.locals as unknown as CaraerLocals;
 const form = await locals.getForm(formRef);
@@ -26,30 +43,111 @@ const form = await locals.getForm(formRef);
 // shell. The page around it stays valid.
 const steps = form?.steps ?? [];
 const wizard = Boolean(form?.wizard && steps.length > 1);
-const fields: CaraerFormField[] = form
-  ? wizard
-    ? []
-    : steps.flatMap((step) => step.fields)
-  : [];
+const hasRequired = steps.some((step) => step.fields.some((field) => field.required));
+const redirectTo = destination(redirect) ?? destination(form?.redirectUrl);
+
+/**
+ * Property names per builder row, one step at a time.
+ * The mapped form from the site can arrive as a flat field list, so the row
+ * widths are read from the stored form grid.
+ */
+async function loadGridSteps(
+  formRef: string,
+  companyUuid: string,
+  subdomain: string,
+): Promise<string[][][] | null> {
+  const base = process.env.CARAER_API_BASE_URL?.replace(/\/$/, '');
+  if (!base || !companyUuid || !formRef) return null;
+  try {
+    const response = await fetch(
+      `${base}/v2/forms/public/${encodeURIComponent(companyUuid)}/${encodeURIComponent(formRef)}`,
+      {
+        headers: {
+          Accept: 'application/json',
+          Origin: process.env.CARAER_ORIGIN || 'https://app.caraer.com',
+          'X-Caraer-Subdomain': subdomain,
+        },
+      },
+    );
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const raw = payload?.data ?? payload;
+    const gridSteps: string[][][] = [];
+    for (const step of raw?.grids ?? []) {
+      const rows: string[][] = [];
+      for (const row of step?.grid ?? []) {
+        const names: string[] = [];
+        for (const cell of row ?? []) {
+          const name = cell?.property?.name;
+          if (typeof name === 'string' && name.length > 0 && !cell?.settings?.hidden) names.push(name);
+        }
+        if (names.length > 0) rows.push(names);
+      }
+      gridSteps.push(rows);
+    }
+    return gridSteps.some((rows) => rows.length > 0) ? gridSteps : null;
+  } catch {
+    return null;
+  }
+}
+
+const gridSteps = form
+  ? await loadGridSteps(formRef, locals.company?.uuid ?? '', locals.company?.subdomain ?? '')
+  : null;
+
+/** Fields that share a builder row stay on one line. */
+function layoutRows(step: CaraerFormStep, stepIndex: number): CaraerFormField[][] {
+  const names = gridSteps?.[stepIndex];
+  if (names && names.length > 0) {
+    const byName = new Map(step.fields.map((field) => [field.name, field]));
+    const rows = names
+      .map((row) => row.map((name) => byName.get(name)).filter((field): field is CaraerFormField => field != null))
+      .filter((row) => row.length > 0);
+    if (rows.length > 0) return rows;
+  }
+  const laidOut = step.rows?.filter((row) => row.length > 0);
+  if (laidOut && laidOut.length > 0) return laidOut;
+  return step.fields.map((field) => [field]);
+}
 
 type InputType = 'text' | 'email' | 'tel' | 'url' | 'date' | 'number';
 
+function typeName(field: CaraerFormField): string {
+  return (field.type ?? '').toUpperCase().replace(/-/g, '_');
+}
+
+function formatName(field: CaraerFormField): string {
+  return (field.format ?? '').toUpperCase().replace(/-/g, '_');
+}
+
 /** Maps a Caraer property type/format onto an input type. */
 function inputType(field: CaraerFormField): InputType {
-  const format = (field.format ?? '').toUpperCase();
+  const format = formatName(field);
+  const type = typeName(field);
   if (format.includes('EMAIL')) return 'email';
   if (format.includes('PHONE')) return 'tel';
   if (format.includes('URL')) return 'url';
   if (format.includes('DATE')) return 'date';
-  if (field.type === 'NUMBER' || field.type === 'INTEGER' || field.type === 'FLOAT') return 'number';
+  if (type === 'NUMBER' || type === 'INTEGER' || type === 'FLOAT') return 'number';
   return 'text';
 }
 
 function control(field: CaraerFormField): 'textarea' | 'select' | 'checkbox' | 'file' | 'input' {
-  if (field.type === 'BOOLEAN') return 'checkbox';
-  if (field.type === 'FILE' || field.type === 'MULTI_FILE') return 'file';
+  const type = typeName(field);
+  const format = formatName(field);
+  if (type === 'BOOLEAN' || type === 'CHECKBOX') return 'checkbox';
+  if (type === 'FILE' || type === 'MULTI_FILE' || format === 'FILE' || format === 'MULTI_FILE') {
+    return 'file';
+  }
   if (field.options && field.options.length > 0) return 'select';
-  if (field.type === 'TEXT_AREA' || field.type === 'LONG_TEXT') return 'textarea';
+  if (
+    type === 'TEXT_AREA' ||
+    type === 'LONG_TEXT' ||
+    format === 'MULTI_LINE' ||
+    format.includes('MULTI_LINE')
+  ) {
+    return 'textarea';
+  }
   return 'input';
 }
 
@@ -65,14 +163,20 @@ if (form) locals.tag(`form:${form.uuid}`);
       enctype="multipart/form-data"
       data-caraer-form={form.uuid}
       data-thank-you={form.thankYouMessage ?? undefined}
-      data-redirect={form.redirectUrl ?? undefined}
+      data-redirect={redirectTo ?? undefined}
       data-wizard={wizard ? 'true' : undefined}
     >
+      {recordUuid && (
+        <input type="hidden" name="conversionPageRecordUuid" value={recordUuid} />
+      )}
+      {redirectTo && <input type="hidden" name="caraerRedirect" value={redirectTo} />}
       {wizard && steps.map((step, index) => (
         <fieldset class="caraer-form__step" data-step={index} hidden={index > 0}>
           {step.title && <legend>{step.title}</legend>}
           {step.description && <p>{step.description}</p>}
-          {step.fields.map((field) => {
+          {layoutRows(step, index).map((row) => (
+            <div class="caraer-form__row" style={`--form-columns: ${row.length}`}>
+              {row.map((field) => {
             const kind = control(field);
             const id = `caraer-${form.uuid}-${index}-${field.name}`;
             return (
@@ -92,7 +196,13 @@ if (form) locals.tag(`form:${form.uuid}`);
                 )}
                 {kind === 'checkbox' && <input id={id} name={field.name} type="checkbox" required={field.required} />}
                 {kind === 'file' && (
-                  <input id={id} name={field.name} type="file" required={field.required} multiple={field.type === 'MULTI_FILE'} />
+                  <div class="caraer-form__file">
+                    <input id={id} name={field.name} type="file" required={field.required} multiple={field.type === 'MULTI_FILE'} />
+                    <span class="caraer-form__file-hint" data-empty={field.placeholder || field.helpText || 'Geen bestand gekozen'}>
+                      {field.placeholder || field.helpText || 'Geen bestand gekozen'}
+                    </span>
+                    <span class="caraer-form__file-button">Selecteren</span>
+                  </div>
                 )}
                 {kind === 'input' && (
                   <input id={id} name={field.name} type={inputType(field)} required={field.required} placeholder={field.placeholder ?? undefined} />
@@ -101,9 +211,13 @@ if (form) locals.tag(`form:${form.uuid}`);
               </div>
             );
           })}
+            </div>
+          ))}
         </fieldset>
       ))}
-      {!wizard && fields.map((field) => {
+      {!wizard && steps.flatMap((step, index) => layoutRows(step, index)).map((row) => (
+        <div class="caraer-form__row" style={`--form-columns: ${row.length}`}>
+          {row.map((field) => {
         const kind = control(field);
         const id = `caraer-${form.uuid}-${field.name}`;
         return (
@@ -135,13 +249,19 @@ if (form) locals.tag(`form:${form.uuid}`);
             )}
 
             {kind === 'file' && (
-              <input
-                id={id}
-                name={field.name}
-                type="file"
-                required={field.required}
-                multiple={field.type === 'MULTI_FILE'}
-              />
+              <div class="caraer-form__file">
+                <input
+                  id={id}
+                  name={field.name}
+                  type="file"
+                  required={field.required}
+                  multiple={field.type === 'MULTI_FILE'}
+                />
+                <span class="caraer-form__file-hint" data-empty={field.placeholder || field.helpText || 'Geen bestand gekozen'}>
+                  {field.placeholder || field.helpText || 'Geen bestand gekozen'}
+                </span>
+                <span class="caraer-form__file-button">Selecteren</span>
+              </div>
             )}
 
             {kind === 'input' && (
@@ -158,6 +278,8 @@ if (form) locals.tag(`form:${form.uuid}`);
           </div>
         );
       })}
+        </div>
+      ))}
 
       {wizard && (
         <div class="caraer-form__nav">
@@ -165,6 +287,7 @@ if (form) locals.tag(`form:${form.uuid}`);
           <button type="button" data-wizard-next>Volgende</button>
         </div>
       )}
+      {hasRequired && <p class="caraer-form__required">* vereiste velden</p>}
       <button type="submit">{submitLabel ?? form.submitLabel ?? 'Verzenden'}</button>
       <p class="caraer-form__status" role="status" aria-live="polite" hidden />
     </form>
@@ -212,6 +335,15 @@ if (form) locals.tag(`form:${form.uuid}`);
       });
     }
 
+    form.querySelectorAll<HTMLInputElement>('.caraer-form__file input').forEach((input) => {
+      input.addEventListener('change', () => {
+        const hint = input.parentElement?.querySelector<HTMLElement>('.caraer-form__file-hint');
+        if (!hint) return;
+        const names = [...(input.files ?? [])].map((file) => file.name);
+        hint.textContent = names.length > 0 ? names.join(', ') : (hint.dataset.empty ?? '');
+      });
+    });
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (button) button.disabled = true;
@@ -249,9 +381,17 @@ if (form) locals.tag(`form:${form.uuid}`);
     gap: var(--caraer-space-md);
   }
 
+  .caraer-form__row {
+    display: grid;
+    grid-template-columns: repeat(var(--form-columns, 1), minmax(0, 1fr));
+    gap: var(--caraer-space-md);
+    align-items: start;
+  }
+
   .caraer-form__field {
     display: grid;
     gap: var(--caraer-space-2xs);
+    min-width: 0;
   }
 
   .caraer-form label {
@@ -265,6 +405,8 @@ if (form) locals.tag(`form:${form.uuid}`);
   .caraer-form select,
   .caraer-form textarea {
     font: inherit;
+    width: 100%;
+    box-sizing: border-box;
     padding: var(--caraer-space-xs) var(--caraer-space-sm);
     border: 1px solid var(--caraer-color-gray-400);
     border-radius: var(--caraer-radius-md);
@@ -274,7 +416,58 @@ if (form) locals.tag(`form:${form.uuid}`);
 
   .caraer-form input[type='checkbox'] {
     justify-self: start;
+    width: auto;
     padding: 0;
+  }
+
+  .caraer-form__file {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--caraer-space-sm);
+    min-height: 2.75rem;
+    padding: 0.35rem 1rem;
+    border: 1px solid var(--caraer-color-gray-400);
+    border-radius: var(--caraer-radius-md);
+    background: var(--caraer-color-white);
+  }
+
+  .caraer-form__file input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .caraer-form__file-hint {
+    color: var(--caraer-color-gray-500);
+    font-size: var(--caraer-size-small);
+    font-weight: 400;
+  }
+
+  .caraer-form__file-button {
+    flex-shrink: 0;
+    color: var(--caraer-color-primary);
+    font-size: var(--caraer-size-small);
+    font-weight: 600;
+  }
+
+  .caraer-form__required {
+    margin: 0;
+    color: var(--form-label-color, var(--caraer-color-font));
+    font-size: var(--caraer-size-small);
+  }
+
+  @media (max-width: 640px) {
+    .caraer-form__row {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   .caraer-form input:focus-visible,

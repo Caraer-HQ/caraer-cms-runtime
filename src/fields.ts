@@ -104,6 +104,23 @@ export function resolveFieldValues(
         out[field.name] = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
         break;
 
+      case 'REPEATABLE': {
+        const items = Array.isArray(raw)
+          ? raw.filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+          : [];
+        const nested = field.itemFields ?? [];
+        out[field.name] = nested.length
+          ? items.map((item) =>
+              resolveFieldValues(
+                nested,
+                { ...stored, ...(item as Record<string, unknown>) },
+                record,
+              ),
+            )
+          : items;
+        break;
+      }
+
       default:
         out[field.name] = raw;
     }

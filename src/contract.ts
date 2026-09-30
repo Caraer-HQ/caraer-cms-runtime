@@ -14,22 +14,28 @@
  * the Flutter builder renders module fields with the widgets it already has.
  */
 export const MODULE_FIELD_TYPES = [
-  'SINGLE_LINE',
-  'MULTI_LINE',
-  'SINGLE_SELECT',
-  'MULTI_SELECT',
-  'RECORD_SINGLE_SELECT',
-  'RECORD_MULTI_SELECT',
-  'OBJECT_SINGLE_SELECT',
-  'OBJECT_MULTI_SELECT',
-  'PROPERTY_SINGLE_SELECT',
-  'PROPERTY_MULTI_SELECT',
-  'SWITCH',
-  'MAPPING',
-  'FILE',
-  'MULTI_FILE',
-  'SECRET',
-  'ACTION',
+  "SINGLE_LINE",
+  "MULTI_LINE",
+  "SINGLE_SELECT",
+  "MULTI_SELECT",
+  "RECORD_SINGLE_SELECT",
+  "RECORD_MULTI_SELECT",
+  "FORM_SINGLE_SELECT",
+  "OBJECT_SINGLE_SELECT",
+  "OBJECT_MULTI_SELECT",
+  "PROPERTY_SINGLE_SELECT",
+  "PROPERTY_MULTI_SELECT",
+  "SWITCH",
+  "MAPPING",
+  "FILE",
+  "MULTI_FILE",
+  /**
+   * A list of objects. Library authors set `min` / `max` and `itemFields`;
+   * the editor pages through one item at a time instead of growing a form.
+   */
+  "REPEATABLE",
+  "SECRET",
+  "ACTION",
 ] as const;
 
 export type ModuleFieldType = (typeof MODULE_FIELD_TYPES)[number];
@@ -41,15 +47,18 @@ export type ModuleFieldType = (typeof MODULE_FIELD_TYPES)[number];
  * `ACTION` is a button that invokes a serverless function from a settings
  * screen. Both are rejected by `caraer apps validate`.
  */
-export const DISALLOWED_MODULE_FIELD_TYPES: readonly ModuleFieldType[] = ['SECRET', 'ACTION'];
+export const DISALLOWED_MODULE_FIELD_TYPES: readonly ModuleFieldType[] = [
+  "SECRET",
+  "ACTION",
+];
 
 export type ModuleFieldOperator =
-  | 'EQUALS'
-  | 'NOT_EQUALS'
-  | 'IN'
-  | 'NOT_IN'
-  | 'IS_SET'
-  | 'IS_NOT_SET';
+  | "EQUALS"
+  | "NOT_EQUALS"
+  | "IN"
+  | "NOT_IN"
+  | "IS_SET"
+  | "IS_NOT_SET";
 
 export interface ModuleFieldCondition {
   field: string;
@@ -61,6 +70,8 @@ export interface ModuleFieldOption {
   name: string;
   label: string;
   helpText?: string;
+  /** Screenshot URL, or a sketch id such as `card-orb` / `card-badge`. */
+  preview?: string;
 }
 
 export interface ModuleField {
@@ -73,10 +84,23 @@ export interface ModuleField {
   defaultValue?: unknown;
   /** Hidden from the editor sidebar but still stored and passed to the module. */
   hidden?: boolean;
-  /** Collapsed under Advanced settings when the field is not inside a group. */
+  /**
+   * When true, the editor shows this field under a collapsed Advanced settings
+   * section unless the field is already inside a titled group. Content (text,
+   * images, icons) stays in the main list; styling belongs here. Unlike
+   * `hidden`, the field is still editable once opened, and the value is
+   * always stored.
+   */
   advanced?: boolean;
   options?: ModuleFieldOption[];
   visibleWhen?: ModuleFieldCondition[];
+  itemFields?: ModuleField[];
+  /** Inclusive lower bound for a `REPEATABLE` list. Defaults to 0. */
+  min?: number;
+  /** Inclusive upper bound for a `REPEATABLE` list. Defaults to 20. */
+  max?: number;
+  /** Singular label used in the editor pager, e.g. "Step" or "Card". */
+  itemLabel?: string;
   /**
    * Restricts an `OBJECT_*` picker to objects that have every listed trait.
    */
@@ -121,16 +145,108 @@ export function flattenModuleFields(items: ModuleFieldOrGroup[]): ModuleField[] 
 }
 
 /**
+ * A named group of fields in the module settings sidebar.
+ *
+ * Opening a component shows only its fields. Stored values stay a flat map
+ * keyed by field name; this is editor organization, not a stored value.
+ *
+ * In `index.astro`, put full {@link ModuleField} objects in `fields`. On push,
+ * `caraer apps` flattens those into the module `fields` list (component order,
+ * then leftover top-level fields) and publishes each component with `fields`
+ * as name strings only.
+ *
+ * @example Group content and keep layout on General
+ * ```ts
+ * export const manifest = {
+ *   name: "hero",
+ *   label: "Hero",
+ *   kind: "section",
+ *   category: "hero",
+ *   fields: [
+ *     { name: "width", label: "Width", type: "SINGLE_SELECT", options: [] },
+ *   ],
+ *   components: [
+ *     {
+ *       name: "heading",
+ *       label: "Heading",
+ *       fields: [
+ *         { name: "heading", label: "Heading", type: "MULTI_LINE", required: true },
+ *         {
+ *           name: "heading_color",
+ *           label: "Heading color",
+ *           type: "SINGLE_SELECT",
+ *           advanced: true,
+ *           options: [],
+ *         },
+ *       ],
+ *     },
+ *     {
+ *       name: "image",
+ *       label: "Image",
+ *       fields: [
+ *         { name: "image", label: "Image", type: "FILE" },
+ *         { name: "image_smart", label: "Image from property", type: "SINGLE_LINE" },
+ *       ],
+ *     },
+ *   ],
+ * } satisfies ModuleManifest;
+ * ```
+ *
+ * @example Reuse exported field constants from `fields.ts`
+ * ```ts
+ * import { headingField, bodyField } from "./fields";
+ * import { widthField, marginTopField } from "../settings";
+ *
+ * export const manifest = {
+ *   name: "content_block",
+ *   label: "Content block",
+ *   kind: "section",
+ *   category: "content",
+ *   fields: [widthField, marginTopField],
+ *   components: [
+ *     { name: "heading", label: "Heading", fields: [headingField] },
+ *     { name: "body", label: "Text", fields: [bodyField] },
+ *   ],
+ * } satisfies ModuleManifest;
+ * ```
+ */
+export interface ModuleComponent {
+  /** snake_case key, unique in the module. */
+  name: string;
+  /** Row title in the module settings sidebar. */
+  label: string;
+  fields: ModuleField[];
+}
+
+/**
+ * Sidebar group in the published module catalog.
+ *
+ * Same `name` / `label` as in source; `fields` are keys into the flat
+ * `fields` array, not nested definitions.
+ */
+export interface ModuleComponentCatalog {
+  name: string;
+  label: string;
+  fields: string[];
+}
+
+/**
  * What a module is used for.
  *
  * `section` composes into a page alongside others; `page` is a complete page in
  * one module; `header` and `footer` fill the site-wide slots that
  * `WebsiteSettings` already models for v1.
  */
-export type ModuleKind = 'section' | 'page' | 'header' | 'footer';
+export type ModuleKind = "section" | "page" | "header" | "footer";
 
 /** UI frameworks a module may use for islands. */
-export const MODULE_FRAMEWORKS = ['react', 'preact', 'solid', 'svelte', 'vue'] as const;
+export const MODULE_FRAMEWORKS = [
+  "react",
+  "preact",
+  "solid",
+  "svelte",
+  "vue",
+] as const;
 export type ModuleFramework = (typeof MODULE_FRAMEWORKS)[number];
 
 /**
@@ -138,7 +254,11 @@ export type ModuleFramework = (typeof MODULE_FRAMEWORKS)[number];
  * them apart by path. Islands must live in a folder named after the framework.
  * Svelte and Vue are unambiguous by file extension.
  */
-export const JSX_FRAMEWORKS: readonly ModuleFramework[] = ['react', 'preact', 'solid'];
+export const JSX_FRAMEWORKS: readonly ModuleFramework[] = [
+  "react",
+  "preact",
+  "solid",
+];
 
 /**
  * How the library picker groups a module.
@@ -147,14 +267,14 @@ export const JSX_FRAMEWORKS: readonly ModuleFramework[] = ['react', 'preact', 's
  * different heading depending on which app shipped it.
  */
 export const MODULE_CATEGORIES = [
-  'hero',
-  'content',
-  'listing',
-  'layout',
-  'media',
-  'form',
-  'cta',
-  'social_proof',
+  "hero",
+  "content",
+  "listing",
+  "layout",
+  "media",
+  "form",
+  "cta",
+  "social_proof",
 ] as const;
 
 export type ModuleCategory = (typeof MODULE_CATEGORIES)[number];
@@ -169,6 +289,29 @@ export interface ModuleManifest {
   /** Groups the module in the library picker. */
   category: ModuleCategory;
   fields: ModuleFieldOrGroup[];
+  /**
+   * Groups fields into sidebar rows. Opening a component shows only its
+   * fields.
+   *
+   * Use components for multi-field blocks that clutter the main list (image,
+   * recruiter, repeatable item shape). Routine copy and layout can stay on
+   * top-level `fields` (**General**); a one-field component is usually noise.
+   *
+   * Component `fields` are merged into the module field list in component
+   * order, then any leftover top-level `fields`. Each field `name` may appear
+   * only once across all components and the leftover list. Leftovers render as
+   * **General**, always open below the named components. Use a manifest component
+   * instead of top-level `fields` when that block should be collapsible too.
+   *
+   * A `foo_smart` field is shown with the `foo` component when `foo` is grouped
+   * and `foo_smart` is not listed elsewhere (same rule as the local CMS dev
+   * harness).
+   *
+   * After push, the catalog stores {@link ModuleComponentCatalog} entries
+   * (`fields` as name strings). Your Astro module still reads a flat
+   * `Astro.props.fields` map; grouping does not change runtime props.
+   */
+  components?: ModuleComponent[];
   /**
    * Frameworks this module's islands use, with the major range it targets.
    *
@@ -190,8 +333,10 @@ export function moduleRef(appName: string, moduleName: string): ModuleRef {
   return `${appName}/${moduleName}`;
 }
 
-export function parseModuleRef(ref: ModuleRef): { app: string; module: string } | null {
-  const slash = ref.indexOf('/');
+export function parseModuleRef(
+  ref: ModuleRef,
+): { app: string; module: string } | null {
+  const slash = ref.indexOf("/");
   if (slash <= 0 || slash === ref.length - 1) return null;
   return { app: ref.slice(0, slash), module: ref.slice(slash + 1) };
 }

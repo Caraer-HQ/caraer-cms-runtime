@@ -19,6 +19,7 @@ const {
   limit = 12,
   offset = 0,
   orderBy,
+  publishedOnly,
   filter,
   class: className,
   emptyMessage,
@@ -30,7 +31,7 @@ let result = { total: 0, records: [] as Awaited<ReturnType<CaraerLocals['listRec
 let failed = false;
 
 try {
-  result = await locals.listRecords({ object, limit, offset, orderBy, filter });
+  result = await locals.listRecords({ object, limit, offset, orderBy, publishedOnly, filter });
 } catch {
   // A listing that cannot load must not take the whole page down with it.
   failed = true;
