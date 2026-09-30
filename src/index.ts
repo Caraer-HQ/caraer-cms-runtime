@@ -8,6 +8,8 @@ export {
 } from './contract.ts';
 
 export type {
+  ModuleComponent,
+  ModuleComponentCatalog,
   ModuleField,
   ModuleFieldCondition,
   ModuleFieldOperator,

@@ -111,6 +111,92 @@ export interface ModuleField {
 }
 
 /**
+ * A named group of fields in the module settings sidebar.
+ *
+ * Opening a component shows only its fields. Stored values stay a flat map
+ * keyed by field name; this is editor organization, not a stored value.
+ *
+ * In `index.astro`, put full {@link ModuleField} objects in `fields`. On push,
+ * `caraer apps` flattens those into the module `fields` list (component order,
+ * then leftover top-level fields) and publishes each component with `fields`
+ * as name strings only.
+ *
+ * @example Group content and keep layout on General
+ * ```ts
+ * export const manifest = {
+ *   name: "hero",
+ *   label: "Hero",
+ *   kind: "section",
+ *   category: "hero",
+ *   fields: [
+ *     { name: "width", label: "Width", type: "SINGLE_SELECT", options: [] },
+ *   ],
+ *   components: [
+ *     {
+ *       name: "heading",
+ *       label: "Heading",
+ *       fields: [
+ *         { name: "heading", label: "Heading", type: "MULTI_LINE", required: true },
+ *         {
+ *           name: "heading_color",
+ *           label: "Heading color",
+ *           type: "SINGLE_SELECT",
+ *           advanced: true,
+ *           options: [],
+ *         },
+ *       ],
+ *     },
+ *     {
+ *       name: "image",
+ *       label: "Image",
+ *       fields: [
+ *         { name: "image", label: "Image", type: "FILE" },
+ *         { name: "image_smart", label: "Image from property", type: "SINGLE_LINE" },
+ *       ],
+ *     },
+ *   ],
+ * } satisfies ModuleManifest;
+ * ```
+ *
+ * @example Reuse exported field constants from `fields.ts`
+ * ```ts
+ * import { headingField, bodyField } from "./fields";
+ * import { widthField, marginTopField } from "../settings";
+ *
+ * export const manifest = {
+ *   name: "content_block",
+ *   label: "Content block",
+ *   kind: "section",
+ *   category: "content",
+ *   fields: [widthField, marginTopField],
+ *   components: [
+ *     { name: "heading", label: "Heading", fields: [headingField] },
+ *     { name: "body", label: "Text", fields: [bodyField] },
+ *   ],
+ * } satisfies ModuleManifest;
+ * ```
+ */
+export interface ModuleComponent {
+  /** snake_case key, unique in the module. */
+  name: string;
+  /** Row title in the module settings sidebar. */
+  label: string;
+  fields: ModuleField[];
+}
+
+/**
+ * Sidebar group in the published module catalog.
+ *
+ * Same `name` / `label` as in source; `fields` are keys into the flat
+ * `fields` array, not nested definitions.
+ */
+export interface ModuleComponentCatalog {
+  name: string;
+  label: string;
+  fields: string[];
+}
+
+/**
  * What a module is used for.
  *
  * `section` composes into a page alongside others; `page` is a complete page in
@@ -169,6 +255,29 @@ export interface ModuleManifest {
   /** Groups the module in the library picker. */
   category: ModuleCategory;
   fields: ModuleField[];
+  /**
+   * Groups fields into sidebar rows. Opening a component shows only its
+   * fields.
+   *
+   * Use components for multi-field blocks that clutter the main list (image,
+   * recruiter, repeatable item shape). Routine copy and layout can stay on
+   * top-level `fields` (**General**); a one-field component is usually noise.
+   *
+   * Component `fields` are merged into the module field list in component
+   * order, then any leftover top-level `fields`. Each field `name` may appear
+   * only once across all components and the leftover list. Leftovers render as
+   * **General**, always open below the named components. Use a manifest component
+   * instead of top-level `fields` when that block should be collapsible too.
+   *
+   * A `foo_smart` field is shown with the `foo` component when `foo` is grouped
+   * and `foo_smart` is not listed elsewhere (same rule as the local CMS dev
+   * harness).
+   *
+   * After push, the catalog stores {@link ModuleComponentCatalog} entries
+   * (`fields` as name strings). Your Astro module still reads a flat
+   * `Astro.props.fields` map; grouping does not change runtime props.
+   */
+  components?: ModuleComponent[];
   /**
    * Frameworks this module's islands use, with the major range it targets.
    *
