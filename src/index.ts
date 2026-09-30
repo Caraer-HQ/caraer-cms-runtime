@@ -1,5 +1,7 @@
 export {
   DISALLOWED_MODULE_FIELD_TYPES,
+  flattenModuleFields,
+  isModuleFieldGroup,
   JSX_FRAMEWORKS,
   MODULE_FIELD_TYPES,
   MODULE_FRAMEWORKS,
@@ -10,8 +12,10 @@ export {
 export type {
   ModuleField,
   ModuleFieldCondition,
+  ModuleFieldGroup,
   ModuleFieldOperator,
   ModuleFieldOption,
+  ModuleFieldOrGroup,
   ModuleFieldType,
   ModuleFramework,
   ModuleKind,

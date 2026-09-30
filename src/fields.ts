@@ -1,4 +1,9 @@
-import type { ModuleField, ModuleFieldCondition } from './contract.ts';
+import {
+  flattenModuleFields,
+  type ModuleField,
+  type ModuleFieldCondition,
+  type ModuleFieldOrGroup,
+} from './contract.ts';
 import type { CaraerRecord } from './document.ts';
 
 function isSet(value: unknown): boolean {
@@ -61,7 +66,7 @@ function readRecordProperty(record: CaraerRecord | null, property: unknown): unk
  * equivalent of a `%job_title%` token in a HubL template.
  */
 export function resolveFieldValues(
-  fields: ModuleField[],
+  fields: ModuleFieldOrGroup[],
   stored: Record<string, unknown>,
   record: CaraerRecord | null,
 ): Record<string, unknown> {
@@ -69,7 +74,7 @@ export function resolveFieldValues(
   // targets a sibling field's configured value rather than its resolved one.
   const out: Record<string, unknown> = {};
 
-  for (const field of fields) {
+  for (const field of flattenModuleFields(fields)) {
     const raw = stored[field.name] ?? field.defaultValue ?? null;
 
     if (!isFieldVisible(field, stored)) {

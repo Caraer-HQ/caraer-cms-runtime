@@ -73,16 +73,51 @@ export interface ModuleField {
   defaultValue?: unknown;
   /** Hidden from the editor sidebar but still stored and passed to the module. */
   hidden?: boolean;
+  /** Collapsed under Advanced settings when the field is not inside a group. */
+  advanced?: boolean;
   options?: ModuleFieldOption[];
   visibleWhen?: ModuleFieldCondition[];
   /**
-   * Restricts an `OBJECT_*` or `PROPERTY_*` field to a subset.
-   *
-   * For a `PROPERTY_SINGLE_SELECT` this is what turns a free property picker
-   * into "pick a text property on the object this page belongs to".
+   * Restricts an `OBJECT_*` picker to objects that have every listed trait.
+   */
+  filterTraits?: string[];
+  /**
+   * Restricts a `PROPERTY_*` picker to properties of these types
+   * (`date`, `string`, …). `filterPropertyTypes` is the settings-schema name.
    */
   allowedPropertyTypes?: string[];
+  filterPropertyTypes?: string[];
+  /**
+   * Restricts a `PROPERTY_*` picker to these format names or types
+   * (`date`, `datetime`, `single-line`, …).
+   */
   allowedPropertyFormats?: string[];
+  filterPropertyFormats?: string[];
+}
+
+/** Sidebar expandable. Put fields in `fields`; do not set `group` on a field. */
+export interface ModuleFieldGroup {
+  group: string;
+  fields: ModuleField[];
+}
+
+export type ModuleFieldOrGroup = ModuleField | ModuleFieldGroup;
+
+export function isModuleFieldGroup(item: ModuleFieldOrGroup): item is ModuleFieldGroup {
+  return (
+    typeof (item as ModuleFieldGroup).group === 'string' &&
+    (item as ModuleFieldGroup).group.trim() !== '' &&
+    Array.isArray((item as ModuleFieldGroup).fields)
+  );
+}
+
+export function flattenModuleFields(items: ModuleFieldOrGroup[]): ModuleField[] {
+  const out: ModuleField[] = [];
+  for (const item of items) {
+    if (isModuleFieldGroup(item)) out.push(...item.fields);
+    else out.push(item);
+  }
+  return out;
 }
 
 /**
@@ -133,7 +168,7 @@ export interface ModuleManifest {
   icon?: string;
   /** Groups the module in the library picker. */
   category: ModuleCategory;
-  fields: ModuleField[];
+  fields: ModuleFieldOrGroup[];
   /**
    * Frameworks this module's islands use, with the major range it targets.
    *
