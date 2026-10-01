@@ -1,6 +1,6 @@
 {
   "name": "@caraer/cms-runtime",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "type": "module",
   "description": "Caraer CMS v2 module contract and platform components.",
   "license": "UNLICENSED",
