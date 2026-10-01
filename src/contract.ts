@@ -36,6 +36,8 @@ export const MODULE_FIELD_TYPES = [
   "REPEATABLE",
   "SECRET",
   "ACTION",
+  "COLOR",
+  "IMAGE",
 ] as const;
 
 export type ModuleFieldType = (typeof MODULE_FIELD_TYPES)[number];
