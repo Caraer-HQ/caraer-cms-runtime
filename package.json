@@ -1,6 +1,6 @@
 {
   "name": "@caraer/cms-runtime",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "type": "module",
   "description": "Caraer CMS v2 module contract and platform components.",
   "license": "UNLICENSED",
@@ -24,7 +24,8 @@
     "./CaraerImage.astro": "./src/components/CaraerImage.astro",
     "./CaraerLink.astro": "./src/components/CaraerLink.astro",
     "./CaraerRichText.astro": "./src/components/CaraerRichText.astro",
-    "./CaraerMenu.astro": "./src/components/CaraerMenu.astro"
+    "./CaraerMenu.astro": "./src/components/CaraerMenu.astro",
+    "./public-seo": "./src/public-seo.ts"
   },
   "files": [
     "src"
@@ -40,5 +41,10 @@
   "keywords": [
     "caraer",
     "caraer-cms-module"
-  ]
+  ],
+  "peerDependenciesMeta": {
+    "astro": {
+      "optional": true
+    }
+  }
 }
