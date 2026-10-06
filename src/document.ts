@@ -17,6 +17,8 @@ export interface PageSeo {
   image?: string;
   noIndex?: boolean;
   canonical?: string;
+  /** Arbitrary tenant-configured JSON-LD; renderers must serialize it safely. */
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
 }
 
 /**
