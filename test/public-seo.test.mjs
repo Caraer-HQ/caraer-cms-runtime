@@ -7,6 +7,7 @@ test('canonical URLs share a configured origin, remove tracking, and respect ove
  assert.equal(canonicalUrl('https://alpha.example.test','/items/1?utm_source=test#section'),'https://alpha.example.test/items/1');
  assert.equal(canonicalUrl('https://alpha.example.test','/items/1','https://beta.example.test/path?tracking=1'),'https://beta.example.test/path');
  assert.throws(()=>canonicalUrl('https://alpha.example.test','/','javascript:alert(1)'));
+ assert.equal(canonicalUrl('https://alpha.example.test','/items/current','other'),'https://alpha.example.test/items/other');
 });
 test('arbitrary JSON-LD stays safe in HTML without changing the JSON value',()=>{
  const data={'@type':'Article',description:'</script><script>alert(1)</script>\u2028'};
@@ -16,11 +17,11 @@ test('arbitrary JSON-LD stays safe in HTML without changing the JSON value',()=>
 test('two tenants and arbitrary objects group deterministically by environment and object with deduplication',()=>{
  const pages=[page(),page('alpha','events'),page('beta','guides','de'),page(),page('alpha','articles','en')];
  const shards=sitemapShards(pages);assert.equal(shards.length,4);assert.equal(shards.reduce((sum,s)=>sum+s.pages.length,0),4);
- assert.deepEqual(sitemapShards([...pages].reverse()),shards);assert.match(sitemapIndex(shards),/<sitemapindex/);
- assert.ok(sitemapIndex(shards).includes('https://beta.example.test/sitemaps/'));
+ assert.deepEqual(sitemapShards([...pages].reverse()),shards);assert.match(sitemapIndex(shards,'https://alpha.example.test'),/<sitemapindex/);
+ assert.ok(!sitemapIndex(shards,'https://alpha.example.test').includes('https://beta.example.test/sitemaps/'));
  const aliases=[page(),{...page(),recordUuid:'other',object:'guides',lastModified:null}];
  assert.deepEqual(sitemapShards(aliases),sitemapShards([...aliases].reverse()));
- assert.throws(()=>sitemapIndex(shards,100),/limit/);
+ assert.throws(()=>sitemapIndex(shards,'https://alpha.example.test',100),/limit/);
 });
 test('sitemaps shard at count and byte limits, escape XML, omit unknown dates and obsolete hints',()=>{
  const pages=Array.from({length:7},(_,index)=>page('alpha','arbitrary','main',index));

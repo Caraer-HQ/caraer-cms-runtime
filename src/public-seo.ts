@@ -15,7 +15,8 @@ export interface SeoMetadata {
   structuredData?: unknown;
 }
 export function canonicalUrl(base: string, path: string, override?: string): string {
-  const url = new URL(override?.trim() || path, base);
+  const page = new URL(path, base);
+  const url = new URL(override?.trim() || page, page);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid canonical URL');
   url.search = ''; url.hash = '';
   return url.toString();
@@ -70,8 +71,9 @@ export function sitemapShards(pages: PublicPageDescriptor[], maxUrls = 50_000, m
   if (shards.length > 50_000) throw new Error('Sitemap index exceeds the sitemap limit');
   return shards;
 }
-export function sitemapIndex(shards: SitemapShard[], maxBytes = 50 * 1024 * 1024): string {
-  const xml = `${prefix}<sitemapindex xmlns="${namespace}">${shards.map(shard => `<sitemap><loc>${escapeXml(`${shard.origin}/sitemaps/${shard.id}`)}</loc></sitemap>`).join('')}</sitemapindex>`;
+export function sitemapIndex(shards: SitemapShard[], servedOrigin: string, maxBytes = 50 * 1024 * 1024): string {
+  const origin = new URL(canonicalUrl(servedOrigin, '/')).origin;
+  const xml = `${prefix}<sitemapindex xmlns="${namespace}">${shards.map(shard => `<sitemap><loc>${escapeXml(`${origin}/sitemaps/${shard.id}`)}</loc></sitemap>`).join('')}</sitemapindex>`;
   if (shards.length > 50_000 || Buffer.byteLength(xml) > maxBytes) throw new Error('Sitemap index exceeds the sitemap limit');
   return xml;
 }
