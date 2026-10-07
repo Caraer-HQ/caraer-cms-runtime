@@ -21,6 +21,7 @@ const {
   orderBy,
   publishedOnly,
   filter,
+  displayProperties,
   class: className,
   emptyMessage,
 } = Astro.props;
@@ -31,7 +32,9 @@ let result = { total: 0, records: [] as Awaited<ReturnType<CaraerLocals['listRec
 let failed = false;
 
 try {
-  result = await locals.listRecords({ object, limit, offset, orderBy, publishedOnly, filter });
+  result = await locals.listRecords({ object, limit, offset, orderBy, publishedOnly, filter,
+    displayProperties: displayProperties ?? (Astro.slots.has('item') ? undefined : ['title']),
+  });
 } catch {
   // A listing that cannot load must not take the whole page down with it.
   failed = true;
