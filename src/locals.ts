@@ -57,7 +57,7 @@ export interface RecordListQuery {
   /** Named text fields to search. Empty scans every string property. */
   searchProperties?: string[];
   filter?: Record<string, unknown>;
-  /** Optional card property names used for meaningful public-change comparisons. */
+  /** @deprecated Ignored; public listings no longer register change comparisons. */
   displayProperties?: string[];
 }
 
