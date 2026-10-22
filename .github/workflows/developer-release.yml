@@ -21,11 +21,16 @@ jobs:
           PACKAGE_NAME: "@caraer/cms-runtime"
         run: |
           python3 - <<'PYTHON'
-          import json, os, urllib.parse, urllib.request
+          import json, os, urllib.error, urllib.parse, urllib.request
           version = json.load(open('package.json'))['version']
           url = 'https://registry.npmjs.org/' + urllib.parse.quote(os.environ['PACKAGE_NAME'], safe='') + '/' + version
-          with urllib.request.urlopen(url, timeout=30) as response:
-              published = json.load(response)
+          try:
+              with urllib.request.urlopen(url, timeout=30) as response:
+                  published = json.load(response)
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              published = {}
           ready = published.get('gitHead') == os.environ['GITHUB_SHA']
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('ready=' + str(ready).lower() + '\n')
