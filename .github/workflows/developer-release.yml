@@ -7,7 +7,33 @@ on:
 permissions:
   contents: read
 jobs:
+  publication-ready:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.registry.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: registry
+        name: Check whether this commit has actually been published
+        env:
+          PACKAGE_NAME: "@caraer/cms-runtime"
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, urllib.parse, urllib.request
+          version = json.load(open('package.json'))['version']
+          url = 'https://registry.npmjs.org/' + urllib.parse.quote(os.environ['PACKAGE_NAME'], safe='') + '/' + version
+          with urllib.request.urlopen(url, timeout=30) as response:
+              published = json.load(response)
+          ready = published.get('gitHead') == os.environ['GITHUB_SHA']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('ready=' + str(ready).lower() + '\n')
+          print('Publication verified for this commit' if ready else 'This commit is not the published package; no release receipt needed')
+          PYTHON
   verify-publication:
+    needs: publication-ready
+    if: needs.publication-ready.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
