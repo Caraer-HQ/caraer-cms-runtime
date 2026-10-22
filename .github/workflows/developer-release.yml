@@ -1,0 +1,33 @@
+name: Verify developer contract publication
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the public npm version belongs to this source
+        run: |
+          release_version="$(python -c 'import json; print(json.load(open("package.json"))["version"])')"
+          python scripts/record_developer_release.py --kind npm --package @caraer/cms-runtime --version "$release_version" --output developer-release-package.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: developer-release-package
+          path: developer-release-package.json
+          retention-days: 90
+      - name: Notify developer documentation assessment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN || secrets.CARAER_HQ_GITHUB_TOKEN }}
+        run: |
+          printf '%s' '{"event_type":"developer-release"}' | gh api --method POST repos/Caraer-HQ/caraer-docs/dispatches --input -
