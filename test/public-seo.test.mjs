@@ -32,3 +32,27 @@ test('sitemaps shard at count and byte limits, escape XML, omit unknown dates an
  assert.throws(()=>sitemapShards([{...pages[0],canonicalUrl:'https://alpha.example.test/items/1?utm_source=x'}]));
  assert.throws(()=>sitemapShards([{...pages[0],object:''}]));
 });
+test('sitemap index dates use each shard latest known modification in chronological order',()=>{
+ const pages=[
+  {...page('alpha','articles','main',0),lastModified:'2026-10-02T00:30:00+02:00'},
+  {...page('alpha','articles','main',1),lastModified:'2026-10-01T23:00:00Z'},
+  {...page('alpha','articles','main',2),lastModified:'invalid'},
+  {...page('alpha','events','main',3),lastModified:'2026-09-15'},
+ ];
+ const shards=sitemapShards(pages);
+ const xml=sitemapIndex(shards,'https://alpha.example.test');
+ assert.ok(xml.includes(`<loc>https://alpha.example.test/sitemaps/${shards[0].id}</loc><lastmod>2026-10-01T23:00:00Z</lastmod>`));
+ assert.match(xml,/<lastmod>2026-09-15<\/lastmod>/);
+ assert.equal((xml.match(/<lastmod>/g)||[]).length,2);
+ assert.equal(sitemapIndex(sitemapShards([...pages].reverse()),'https://alpha.example.test'),xml);
+});
+test('sitemap index omits dates for shards with only missing or invalid modification dates',()=>{
+ const pages=[
+  {...page('alpha','articles','main',0),lastModified:null},
+  {...page('alpha','articles','main',1),lastModified:'invalid'},
+  {...page('alpha','articles','main',2),lastModified:''},
+ ];
+ const xml=sitemapIndex(sitemapShards(pages),'https://alpha.example.test');
+ assert.ok(!xml.includes('<lastmod>'));
+ assert.ok(!sitemapIndex([],'https://alpha.example.test').includes('<lastmod>'));
+});

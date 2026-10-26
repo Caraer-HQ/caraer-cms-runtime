@@ -73,7 +73,15 @@ export function sitemapShards(pages: PublicPageDescriptor[], maxUrls = 50_000, m
 }
 export function sitemapIndex(shards: SitemapShard[], servedOrigin: string, maxBytes = 50 * 1024 * 1024): string {
   const origin = new URL(canonicalUrl(servedOrigin, '/')).origin;
-  const xml = `${prefix}<sitemapindex xmlns="${namespace}">${shards.map(shard => `<sitemap><loc>${escapeXml(`${origin}/sitemaps/${shard.id}`)}</loc></sitemap>`).join('')}</sitemapindex>`;
+  const entries = shards.map(shard => {
+    let lastModified: string | null = null, latest = -Infinity;
+    for (const page of shard.pages) {
+      const timestamp = page.lastModified ? Date.parse(page.lastModified) : NaN;
+      if (timestamp > latest) { latest = timestamp; lastModified = page.lastModified; }
+    }
+    return `<sitemap><loc>${escapeXml(`${origin}/sitemaps/${shard.id}`)}</loc>${lastModified ? `<lastmod>${escapeXml(lastModified)}</lastmod>` : ''}</sitemap>`;
+  });
+  const xml = `${prefix}<sitemapindex xmlns="${namespace}">${entries.join('')}</sitemapindex>`;
   if (shards.length > 50_000 || Buffer.byteLength(xml) > maxBytes) throw new Error('Sitemap index exceeds the sitemap limit');
   return xml;
 }
