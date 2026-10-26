@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /** Provider-independent URL, JSON-LD and sitemap rules shared by the site renderers. */
 export interface PublicPageDescriptor {
   recordUuid: string;
@@ -6,6 +8,7 @@ export interface PublicPageDescriptor {
   path: string;
   canonicalUrl: string;
   lastModified: string | null;
+  rootSlug?: string;
 }
 export interface SeoMetadata {
   title?: string;
@@ -39,12 +42,15 @@ export function urlEntry(page: PublicPageDescriptor): string {
   const date = page.lastModified && !Number.isNaN(Date.parse(page.lastModified)) ? page.lastModified : null;
   return `<url><loc>${escapeXml(page.canonicalUrl)}</loc>${date ? `<lastmod>${escapeXml(date)}</lastmod>` : ''}</url>`;
 }
-export interface SitemapShard { id: string; origin: string; pages: PublicPageDescriptor[] }
+export interface SitemapShard { id: string; legacyId?: string; origin: string; pages: PublicPageDescriptor[] }
+function sitemapSlug(value: string): string {
+  return value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'pages';
+}
 export function sitemapShards(pages: PublicPageDescriptor[], maxUrls = 50_000, maxBytes = 50 * 1024 * 1024): SitemapShard[] {
   const groups = new Map<string, PublicPageDescriptor[]>();
   const seen = new Set<string>();
   // Sorting makes shards deterministic when discovery order changes.
-  const order = (page: PublicPageDescriptor) => JSON.stringify([page.canonicalUrl, page.environment, page.object, page.recordUuid, page.path, page.lastModified]);
+  const order = (page: PublicPageDescriptor) => JSON.stringify([page.canonicalUrl, page.environment, page.object, page.recordUuid, page.path, page.lastModified, page.rootSlug]);
   for (const page of [...pages].sort((a,b) => order(a).localeCompare(order(b)))) {
     if (!page.recordUuid || !page.object || !page.environment || !page.canonicalUrl) throw new Error('Incomplete public page descriptor');
     const url = canonicalUrl(page.canonicalUrl, page.canonicalUrl);
@@ -54,12 +60,21 @@ export function sitemapShards(pages: PublicPageDescriptor[], maxUrls = 50_000, m
     const group = JSON.stringify([new URL(url).origin, page.environment, page.object]);
     const entries = groups.get(group) ?? []; entries.push(page); groups.set(group, entries);
   }
+  const names = new Map<string, string>(), nameCounts = new Map<string, number>();
+  for (const [group, entries] of groups) {
+    const [, environment, object] = JSON.parse(group) as string[];
+    const roots = [...new Set(entries.map(page => page.rootSlug?.trim()).filter(root => root && root !== 'root' && root !== '/'))];
+    const name = `${sitemapSlug(roots.length === 1 ? roots[0]! : object)}-${sitemapSlug(environment)}`;
+    names.set(group, name); nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+  }
   const shards: SitemapShard[] = [];
   for (const [group, entries] of groups) {
     const [origin, environment, object] = JSON.parse(group) as string[];
-    const key = Buffer.from(JSON.stringify([environment, object, origin])).toString('base64url');
+    const legacyKey = Buffer.from(JSON.stringify([environment, object, origin])).toString('base64url');
+    const name = names.get(group)!;
+    const key = nameCounts.get(name)! > 1 ? `${name}-${createHash('sha256').update(group).digest('hex').slice(0, 16)}` : name;
     let slice: PublicPageDescriptor[] = [], size = 150, index = 0;
-    const push = () => { shards.push({ id: `${key}.${index++}.xml`, origin, pages: slice }); slice = []; size = 150; };
+    const push = () => { const part = index++; shards.push({ id: `${key}-${part + 1}.xml`, legacyId: `${legacyKey}.${part}.xml`, origin, pages: slice }); slice = []; size = 150; };
     for (const entry of entries) {
       const bytes = Buffer.byteLength(urlEntry(entry));
       if (bytes + 150 > maxBytes) throw new Error('Sitemap URL exceeds shard size limit');

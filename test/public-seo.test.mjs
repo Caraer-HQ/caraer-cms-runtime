@@ -56,3 +56,27 @@ test('sitemap index omits dates for shards with only missing or invalid modifica
  assert.ok(!xml.includes('<lastmod>'));
  assert.ok(!sitemapIndex([],'https://alpha.example.test').includes('<lastmod>'));
 });
+test('sitemap filenames use root slugs, environment and one-based part numbers with legacy aliases',()=>{
+ const pages=Array.from({length:3},(_,index)=>({...page('alpha','vacancy','production',index),rootSlug:'vacatures'}));
+ const shards=sitemapShards(pages,2);
+ assert.deepEqual(shards.map(shard=>shard.id),['vacatures-production-1.xml','vacatures-production-2.xml']);
+ const legacyKey=Buffer.from(JSON.stringify(['production','vacancy','https://alpha.example.test'])).toString('base64url');
+ assert.deepEqual(shards.map(shard=>shard.legacyId),[`${legacyKey}.0.xml`,`${legacyKey}.1.xml`]);
+ assert.equal(sitemapShards([{...page(),rootSlug:'root'}])[0].id,'articles-main-1.xml');
+ assert.equal(sitemapShards([page()])[0].id,'articles-main-1.xml');
+});
+test('readable sitemap names stay unique across hosts, objects and normalized slug collisions',()=>{
+ const pages=[
+  {...page('alpha','vacancy','production'),rootSlug:'vacatures'},
+  {...page('beta','vacancy','production'),rootSlug:'vacatures'},
+  {...page('alpha','job','production'),rootSlug:'vacatures'},
+  {...page('alpha','events','production'),rootSlug:'café events'},
+  {...page('alpha','guides','production'),rootSlug:'cafe-events'},
+ ];
+ const shards=sitemapShards(pages);
+ assert.equal(new Set(shards.map(shard=>shard.id)).size,pages.length);
+ assert.ok(shards.every(shard=>/^(vacatures|cafe-events)-production-[a-f0-9]{16}-1\.xml$/.test(shard.id)));
+ assert.deepEqual(sitemapShards([...pages].reverse()),shards);
+ const unsafe=sitemapShards([{...page(),rootSlug:'../../ Café & guides?'}])[0].id;
+ assert.equal(unsafe,'cafe-guides-main-1.xml');
+});
