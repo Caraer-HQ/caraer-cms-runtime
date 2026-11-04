@@ -19,6 +19,25 @@ import type { ModuleManifest, ModuleProps } from '@caraer/cms-runtime';
 ---
 ```
 
+## Repeatable item groups
+
+`ModuleField.itemFields` accepts fields and `{ group, fields }` objects, using
+the same expandable groups as the module sidebar. For example:
+
+```ts
+itemFields: [
+  { name: 'heading', label: 'Heading', type: 'SINGLE_LINE' },
+  { group: 'Heading settings', fields: [
+    { name: 'heading_color', label: 'Color', type: 'SINGLE_SELECT', defaultValue: 'none',
+      options: [{ name: 'none', label: 'None' }, { name: 'primary', label: 'Primary' }] },
+  ] },
+]
+```
+
+Groups are presentation metadata. `resolveFieldValues` keeps each item's values
+flat, applies defaults and visibility rules, and resolves property selectors
+independently for each item. Group titles do not become stored value keys.
+
 ## Related
 
 - [`@caraer/cms-tokens`](https://github.com/Caraer-HQ/caraer-cms-tokens) — design token contract

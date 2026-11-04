@@ -96,7 +96,8 @@ export interface ModuleField {
   advanced?: boolean;
   options?: ModuleFieldOption[];
   visibleWhen?: ModuleFieldCondition[];
-  itemFields?: ModuleField[];
+  /** Fields and expandable groups for one item; groups do not nest stored values. */
+  itemFields?: ModuleFieldOrGroup[];
   /** Inclusive lower bound for a `REPEATABLE` list. Defaults to 0. */
   min?: number;
   /** Inclusive upper bound for a `REPEATABLE` list. Defaults to 20. */
