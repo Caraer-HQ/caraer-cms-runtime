@@ -221,6 +221,7 @@ export const MODULE_CATEGORIES = [
   "hero",
   "content",
   "listing",
+  "previews",
   "layout",
   "media",
   "form",
