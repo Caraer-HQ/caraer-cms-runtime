@@ -50,4 +50,3 @@ and pending-snapshot coalescer used by CMS v1 and v2. Hidden time is excluded;
 unchanged or consent-disabled measurements do not emit heartbeats. Only cumulative
 engagement snapshots within one visitor/session/page and between business actions
 can merge. Adapters own consent, identity, transport and framework lifecycle.
-

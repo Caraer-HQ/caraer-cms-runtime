@@ -349,10 +349,12 @@ if (form) locals.tag(`form:${form.uuid}`);
         }
         step += 1;
         showStep();
+        form.dispatchEvent(new CustomEvent('caraer:form-step', { bubbles:true, detail:{formUuid:form.dataset.caraerForm,stepIndex:step} }));
       });
       prev?.addEventListener('click', () => {
         step = Math.max(0, step - 1);
         showStep();
+        form.dispatchEvent(new CustomEvent('caraer:form-step', { bubbles:true, detail:{formUuid:form.dataset.caraerForm,stepIndex:step} }));
       });
     }
 
@@ -372,6 +374,7 @@ if (form) locals.tag(`form:${form.uuid}`);
       try {
         const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
         if (!response.ok) throw new Error(String(response.status));
+        form.dispatchEvent(new CustomEvent('caraer:form-submitted', { bubbles:true }));
 
         const redirect = form.dataset.redirect;
         if (redirect) {
