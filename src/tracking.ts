@@ -49,9 +49,10 @@ export interface ActiveTimeOptions {
   setInterval?: (callback: () => void, delay: number) => unknown;
   clearInterval?: (timer: unknown) => void;
 }
+export interface ActiveTimeControl { (): void; reset(): void }
 
 /** Hidden time is excluded; unchanged snapshots and revoked consent produce no events. */
-export function startActiveTimeTracking(options: ActiveTimeOptions): () => void {
+export function startActiveTimeTracking(options: ActiveTimeOptions): ActiveTimeControl {
   const now = options.now ?? (() => performance.now());
   const schedule = options.setInterval ?? ((callback, delay) => globalThis.setInterval(callback, delay));
   const cancel = options.clearInterval ?? (timer => globalThis.clearInterval(timer as ReturnType<typeof setInterval>));
@@ -82,10 +83,13 @@ export function startActiveTimeTracking(options: ActiveTimeOptions): () => void 
     if (!visible && report('page_engagement')) options.flush();
   };
   options.document.addEventListener('visibilitychange', visibility);
-  return () => {
+  return Object.assign(() => {
     if (stopped) return;
     stopped = true;
     tick(); cancel(timer); options.document.removeEventListener('visibilitychange', visibility);
     if (report('page_engagement')) options.flush();
-  };
+  }, { reset() {
+    lastTick = now(); activeMs = 0; lastAccountedMs = 0; lastSentSeconds = 0;
+    visible = options.document.visibilityState === 'visible';
+  } });
 }

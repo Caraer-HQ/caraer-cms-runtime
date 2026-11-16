@@ -45,6 +45,11 @@ test('an initially hidden page produces no heartbeat or fictitious active time',
  const f=fixture();f.visibility('hidden');f.advance(300000);f.stop();assert.equal(f.events.length,0);
 });
 
+test('a renewed session starts a new page active-time measurement',()=>{
+ const f=fixture();f.advance(30000);f.stop.reset();f.advance(30000);
+ assert.equal(f.events.at(-1).timeOnPage,30);f.stop();
+});
+
 test('unchanged hide, cleanup, and revoked consent cannot add analytics', () => {
   const f = fixture(); f.advance(30000);
   f.visibility('hidden'); assert.equal(f.events.length, 1);
