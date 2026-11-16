@@ -161,6 +161,7 @@ export function flattenModuleFields(
 export const MODULE_KINDS = [
   "section",
   "page",
+  "preview",
   "header",
   "footer",
   "cookie_banner",
@@ -231,6 +232,13 @@ export const MODULE_CATEGORIES = [
 
 export type ModuleCategory = (typeof MODULE_CATEGORIES)[number];
 
+/** Native shells use these bindings without executing app code per pill. */
+export interface RecordPreviewPresentation {
+  titleField: string;
+  subtitleField?: string;
+  imageField?: string;
+}
+
 export interface ModuleManifest {
   name: string;
   label: string;
@@ -251,6 +259,8 @@ export interface ModuleManifest {
    * customer's live site.
    */
   frameworks?: Partial<Record<ModuleFramework, string>>;
+  /** Declared property fields used by native portal record shells. */
+  recordPreview?: RecordPreviewPresentation;
   /** Screenshot URL shown in the library picker. */
   preview?: string;
 }

@@ -25,6 +25,7 @@ export type {
   ModuleKind,
   ModuleManifest,
   ModuleRef,
+  RecordPreviewPresentation,
   SiteChromeModuleKind,
 } from "./contract.ts";
 
