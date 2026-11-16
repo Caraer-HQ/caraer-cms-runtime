@@ -43,3 +43,10 @@ independently for each item. Group titles do not become stored value keys.
 - [`@caraer/cms-tokens`](https://github.com/Caraer-HQ/caraer-cms-tokens) — design token contract
 - [`caraer-web`](https://github.com/Caraer-HQ/caraer-web) — the company website runtime
 - [`caraer-cli`](https://github.com/Caraer-HQ/caraer-cli) — scaffolds modules that import this package
+# Browser tracking policy
+
+`@caraer/cms-runtime/tracking` exports the framework-independent active-time clock
+and pending-snapshot coalescer used by CMS v1 and v2. Hidden time is excluded;
+unchanged or consent-disabled measurements do not emit heartbeats. Only cumulative
+engagement snapshots within one visitor/session/page and between business actions
+can merge. Adapters own consent, identity, transport and framework lifecycle.

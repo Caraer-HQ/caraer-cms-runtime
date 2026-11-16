@@ -25,7 +25,8 @@
     "./CaraerLink.astro": "./src/components/CaraerLink.astro",
     "./CaraerRichText.astro": "./src/components/CaraerRichText.astro",
     "./CaraerMenu.astro": "./src/components/CaraerMenu.astro",
-    "./public-seo": "./src/public-seo.ts"
+    "./public-seo": "./src/public-seo.ts",
+    "./tracking": "./src/tracking.ts"
   },
   "files": [
     "src"
