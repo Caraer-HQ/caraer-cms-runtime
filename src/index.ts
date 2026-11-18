@@ -14,6 +14,7 @@ export {
 } from "./contract.ts";
 
 export type {
+  FormModuleInput,
   ModuleField,
   ModuleFieldCondition,
   ModuleFieldGroup,
@@ -28,6 +29,12 @@ export type {
   RecordPreviewPresentation,
   SiteChromeModuleKind,
 } from "./contract.ts";
+
+export {
+  compatibleFormInput,
+  inputValues,
+  formInputName,
+} from "./form-inputs.ts";
 
 export { emptyPageDocument } from "./document.ts";
 
@@ -59,6 +66,7 @@ export type { CaraerWindowApi } from "./global.d.ts";
 export type {
   CaraerForm,
   CaraerFormField,
+  FormInputContext,
   CaraerFormStep,
   CaraerLocals,
   CaraerMenu,

@@ -26,7 +26,10 @@
     "./CaraerRichText.astro": "./src/components/CaraerRichText.astro",
     "./CaraerMenu.astro": "./src/components/CaraerMenu.astro",
     "./public-seo": "./src/public-seo.ts",
-    "./tracking": "./src/tracking.ts"
+    "./tracking": "./src/tracking.ts",
+    "./FormLayout.astro": "./src/components/FormLayout.astro",
+    "./FormInput.astro": "./src/components/FormInput.astro",
+    "./form-controls": "./src/form-complex.ts"
   },
   "files": [
     "src"

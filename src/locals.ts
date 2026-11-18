@@ -14,8 +14,23 @@ export interface CaraerMenu {
   items: CaraerMenuItem[];
 }
 
+/** The selected module receives one of these contexts for each saved instance. */
+export interface FormInputContext {
+  field: CaraerFormField;
+  id: string;
+  preview?: boolean;
+}
+
 export interface CaraerFormField {
+  formatSettings?: Record<string, unknown>;
+  rules?: string[];
+
   uuid: string;
+  id?: string;
+  input?: string | null;
+  inputFields?: Record<string, unknown>;
+  value?: unknown;
+  hidden?: boolean;
   name: string;
   label: string;
   type: string;
@@ -35,6 +50,8 @@ export interface CaraerFormStep {
 }
 
 export interface CaraerForm {
+  module?: string | null;
+  moduleFields?: Record<string, unknown>;
   uuid: string;
   name: string;
   label: string;
@@ -94,6 +111,12 @@ export interface CaraerLocals {
 
   getMenu(location: string): Promise<CaraerMenu | null>;
   getForm(formUuidOrName: string): Promise<CaraerForm | null>;
+  resolveFormModule?(
+    ref: string,
+  ): {
+    component: unknown;
+    manifest: import("./contract.ts").ModuleManifest;
+  } | null;
   listRecords(query: RecordListQuery): Promise<RecordListResult>;
 
   /**

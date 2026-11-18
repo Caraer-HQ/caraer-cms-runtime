@@ -1,0 +1,29 @@
+---
+import type { CaraerForm } from '../locals.ts';
+import NativeInput from './FormInput.astro';
+interface Props { form: CaraerForm; renderers?: Record<string, any>; idPrefix: string; preview?: boolean; inputProps?: Record<string, unknown>; }
+const { form, renderers = {}, idPrefix, preview = false, inputProps = {} } = Astro.props;
+const wizard = form.wizard && form.steps.length > 1;
+---
+{form.steps.map((step, index) => (
+  <fieldset class="caraer-form__step" data-step={wizard ? index : undefined}>
+    {step.title && <legend>{step.title}</legend>}
+    {step.description && <p>{step.description}</p>}
+    {(step.rows ?? step.fields.map(field => [field])).map(row => (
+      <div class="caraer-form__row" style={`--form-columns: ${row.length}`}>
+        {row.map(field => {
+          const Input = field.input ? (field.name ? renderers[field.input] : null) : NativeInput;
+          return Input ? <Input {...inputProps} field={field} id={`${idPrefix}-${field.id ?? `${index}-${field.name}`}`} preview={preview} />
+            : <div role="alert" data-caraer-input={field.id}>Choose an available input type and property.</div>;
+        })}
+      </div>
+    ))}
+  </fieldset>
+))}
+<style>
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .caraer-form__step { display: grid; gap: var(--caraer-space-md, 1rem); }
+  .caraer-form__step[hidden] { display: none; }
+  .caraer-form__row { display: grid; grid-template-columns: repeat(var(--form-columns, 1), minmax(0, 1fr)); gap: var(--caraer-space-md, 1rem); align-items: start; }
+  @media(max-width:639px) { .caraer-form__row { grid-template-columns: minmax(0, 1fr); } }
+</style>
