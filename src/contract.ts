@@ -160,6 +160,7 @@ export function flattenModuleFields(
  */
 export const MODULE_KINDS = [
   "section",
+  "form",
   "page",
   "preview",
   "header",
@@ -239,6 +240,15 @@ export interface RecordPreviewPresentation {
   imageField?: string;
 }
 
+/** One reusable input design, instantiated by the form editor. */
+export interface FormModuleInput {
+  name: string;
+  label: string;
+  allowedPropertyTypes: string[];
+  allowedPropertyFormats?: string[];
+  fields?: ModuleFieldOrGroup[];
+}
+
 export interface ModuleManifest {
   name: string;
   label: string;
@@ -249,6 +259,7 @@ export interface ModuleManifest {
   /** Groups the module in the library picker. */
   category: ModuleCategory;
   fields: ModuleFieldOrGroup[];
+  inputs?: FormModuleInput[];
   /**
    * Frameworks this module's islands use, with the major range it targets.
    *

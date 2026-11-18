@@ -1,0 +1,87 @@
+---
+import type { FormInputContext } from '../locals.ts';
+import { formInputName, inputValues } from '../form-inputs.ts';
+interface Props extends FormInputContext { variant?: string; }
+const { field, id, preview = false, variant } = Astro.props;
+const name = formInputName(field);
+const format = (field.format ?? field.type).toLowerCase().replaceAll('_', '-');
+const value = field.value == null ? '' : typeof field.value === 'object' ? JSON.stringify(field.value) : String(field.value);
+const values = inputValues(field.value);
+const multiple = ['multi-select', 'tag'].includes(format) || ['multi-select', 'tag'].includes(field.type.toLowerCase());
+const options = field.options ?? [];
+const choice = ['single-select','multi-select','tag'].includes(format) || options.length > 0;
+const checkbox = ['boolean','checkbox','single-checkbox'].includes(format);
+const file = ['file','multi-file'].includes(format) || ['FILE','MULTI_FILE'].includes(field.type);
+const textarea = ['multi-line','text-area','long-text'].includes(format);
+const range = ['date-range','number-range','currency-range'].includes(format);
+const complex = range || ['location','map-point','recurrence','structure'].includes(format);
+const dateValue = (v: string) => !v ? '' : /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0,10) : Number.isFinite(Number(v)) ? new Date(Number(v) < 1e11 ? Number(v)*1000 : Number(v)).toISOString().slice(0,10) : '';
+const inputType = format === 'email' ? 'email' : format === 'phone' ? 'tel' : format === 'url' ? 'url' : format === 'date' ? 'date' : ['number','currency','duration'].includes(format) ? 'number' : 'text';
+const parts = format === 'location' || format === 'map-point' ? value.split(';;') : value.split(';');
+const tiles = variant === 'tiles';
+---
+<div class="caraer-form__field" data-caraer-input={field.id} data-field={field.name} data-input-format={format} hidden={field.hidden}>
+  {field.hidden ? <input type="hidden" name={name} value={value} /> : <>
+    {choice && tiles ? <fieldset class="caraer-input-choices" data-required={field.required ? 'true' : undefined}>
+      <legend>{field.label}{field.required && ' *'}</legend>
+      <div class="caraer-selection-tiles">
+        {options.map((option, index) => <label class="caraer-selection-tile" for={`${id}-${index}`}>
+          <input id={`${id}-${index}`} name={name} type={multiple ? 'checkbox' : 'radio'} value={option.name} checked={values.includes(option.name)} required={!multiple && field.required} aria-describedby={field.helpText ? `${id}-help` : undefined} />
+          <span>{option.label}</span>
+        </label>)}
+      </div>
+    </fieldset> : checkbox ? <label for={id} class="caraer-form__checkbox">
+      <input id={id} name={name} type="checkbox" value="true" checked={['true','1','selected'].includes(value)} required={field.required} />
+      <span>{field.label}{field.required && ' *'}</span>
+    </label> : <>
+      <label for={id}>{field.label}{field.required && ' *'}</label>
+      {choice && <select id={id} name={name} multiple={multiple} required={field.required} aria-describedby={field.helpText ? `${id}-help` : undefined}>
+        {!multiple && <option value="">{field.placeholder ?? ''}</option>}
+        {options.map(option => <option value={option.name} selected={values.includes(option.name)}>{option.label}</option>)}
+      </select>}
+      {textarea && !choice && <textarea id={id} name={name} rows="4" required={field.required} placeholder={field.placeholder ?? undefined}>{value}</textarea>}
+      {file && <div class="caraer-form__file"><input id={id} name={name} type="file" multiple={format === 'multi-file' || field.type === 'MULTI_FILE'} required={field.required && !value} data-existing={value} /><span class="caraer-form__file-hint">{value ? 'Existing file selected' : 'Choose a file'}</span></div>}
+      {complex && <div data-complex-input={format} data-initial={value} data-required={field.required ? 'true' : undefined}>
+        <input type="hidden" name={name} value={value} data-complex-value />
+        {range && <div class="caraer-range">
+          <input id={id} aria-label={`${field.label} start`} type={format === 'date-range' ? 'date' : 'number'} step={format === 'date-range' ? undefined : 'any'} data-part="0" value={format === 'date-range' ? dateValue(parts[0]) : parts[0]} required={field.required} />
+          <input aria-label={`${field.label} end`} type={format === 'date-range' ? 'date' : 'number'} step={format === 'date-range' ? undefined : 'any'} data-part="1" value={format === 'date-range' ? dateValue(parts[1]) : parts[1]} required={field.required} />
+        </div>}
+        {['location','map-point'].includes(format) && <div class="caraer-location">
+          {['Street','House number','City','Postcode','Country','Latitude','Longitude','Formatted address'].map((label,index) => <label>{label}<input id={index === 0 ? id : undefined} data-part={index} type={index === 5 || index === 6 ? 'number' : 'text'} step={index === 5 || index === 6 ? 'any' : undefined} value={parts[index] ?? ''} required={field.required && index === 2} /></label>)}
+          <slot name="location-search" />
+        </div>}
+        {format === 'recurrence' && <div class="caraer-recurrence">
+          <label>Repeats<select id={id} data-recurrence="FREQ"><option value="">Choose frequency</option>{['DAILY','WEEKLY','MONTHLY','YEARLY'].map(v => <option value={v}>{v.toLowerCase()}</option>)}</select></label>
+          <label>Every<input type="number" min="1" value="1" data-recurrence="INTERVAL" /></label>
+          <fieldset><legend>Weekdays</legend>{['MO','TU','WE','TH','FR','SA','SU'].map(day => <label><input type="checkbox" value={day} data-weekday />{day}</label>)}</fieldset>
+          <label>End<select data-recurrence-end><option value="never">Never</option><option value="count">After occurrences</option><option value="until">On date</option></select></label>
+          <label data-count-label hidden>Occurrences<input type="number" min="1" data-recurrence="COUNT" /></label>
+          <label data-until-label hidden>Until<input type="date" data-recurrence="UNTIL" /></label>
+          <label>Excluded dates<input placeholder="2026-12-25, 2027-01-01" data-exdates /></label>
+          <p data-recurrence-preserved hidden>This schedule contains additional rules. It is preserved until you explicitly replace it.</p>
+          <button type="button" data-recurrence-replace hidden>Replace with these settings</button>
+        </div>}
+        {format === 'structure' && <div id={id} data-structure-editor aria-label={field.label}></div>}
+      </div>}
+      {!choice && !textarea && !file && !complex && <input id={id} name={name} type={inputType} step={inputType === 'number' ? 'any' : undefined} min={format === 'duration' ? '0' : undefined} required={field.required} placeholder={field.placeholder ?? undefined} value={format === 'date' ? dateValue(value) : value} />}
+    </>}
+    {field.helpText && <small id={`${id}-help`}>{field.helpText}</small>}
+    {preview && file && <small>Uploads are not saved in preview.</small>}
+  </>}
+</div>
+<style is:global>
+  .caraer-input-choices { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .caraer-input-choices legend { margin-bottom: 1rem; }
+  .caraer-selection-tiles { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .875rem; }
+  .caraer-selection-tile { position: relative; display: block; cursor: pointer; }
+  .caraer-selection-tile input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .caraer-selection-tile span { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 3.75rem; padding: .75rem 1rem; border: 2px solid var(--caraer-color-gray-200,#e3e5eb); border-radius: .5rem; background: var(--caraer-color-white,#fff); overflow-wrap: anywhere; }
+  .caraer-selection-tile input:checked + span { border-color: var(--caraer-color-primary,#0069a7); background: color-mix(in srgb,var(--caraer-color-primary,#0069a7) 12%,white); color: var(--caraer-color-primary,#0069a7); }
+  .caraer-selection-tile input:focus-visible + span { outline: 3px solid var(--caraer-color-primary,#0069a7); outline-offset: 3px; }
+  .caraer-range,.caraer-location { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+  .caraer-form__field[hidden] { display: none; }
+  [data-structure-editor] fieldset { margin: .5rem 0; padding: .5rem; border: 1px solid #ddd; }
+  @media(max-width:1023px) { .caraer-selection-tiles { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+  @media(max-width:639px) { .caraer-selection-tiles,.caraer-range,.caraer-location { grid-template-columns: minmax(0,1fr); } }
+</style>
