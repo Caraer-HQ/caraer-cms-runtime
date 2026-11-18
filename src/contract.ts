@@ -27,6 +27,7 @@ export const MODULE_FIELD_TYPES = [
   "PROPERTY_MULTI_SELECT",
   "SWITCH",
   "MAPPING",
+  "FILTER",
   "FILE",
   "MULTI_FILE",
   /**
@@ -108,6 +109,8 @@ export interface ModuleField {
    * Restricts an `OBJECT_*` picker to objects that have every listed trait.
    */
   filterTraits?: string[];
+  /** Target object name for the standard record filter editor. */
+  filterObject?: string;
   /**
    * Restricts a `PROPERTY_*` picker to properties of these types
    * (`date`, `string`, …). `filterPropertyTypes` is the settings-schema name.
