@@ -77,6 +77,8 @@ export interface ModuleFieldOption {
 }
 
 export interface ModuleField {
+  /** A name from the module’s ordered tabs. Defaults to its first tab. */
+  tab?: string;
   /** snake_case key. Becomes the property name on `Astro.props.fields`. */
   name: string;
   label: string;
@@ -258,6 +260,8 @@ export interface ModuleManifest {
   icon?: string;
   /** Groups the module in the library picker. */
   category: ModuleCategory;
+  /** Settings tabs in display order. The editor opens the first one. */
+  tabs?: string[];
   fields: ModuleFieldOrGroup[];
   inputs?: FormModuleInput[];
   /**

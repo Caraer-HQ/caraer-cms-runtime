@@ -19,6 +19,15 @@ import type { ModuleManifest, ModuleProps } from '@caraer/cms-runtime';
 ---
 ```
 
+## Settings tabs
+
+Declare an ordered list of tab names on the manifest, for example
+`tabs: ["overview", "appearance"]`. The editor opens the first tab. A field’s
+optional `tab` selects one of these names. Fields with missing or undeclared
+names appear on the first tab. A repeatable’s tab owns its row controls, and
+its item fields can be edited on other tabs. Omitting the list or leaving it
+empty gives the module a single settings panel.
+
 ## Repeatable item groups
 
 `ModuleField.itemFields` accepts fields and `{ group, fields }` objects, using
