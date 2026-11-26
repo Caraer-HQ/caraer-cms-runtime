@@ -33,5 +33,5 @@ export function inputValues(value: unknown): string[] {
 }
 
 export function formInputName(field: CaraerFormField): string {
-  return field.input && field.id ? `__input_${field.id}` : field.name;
+  return field.id ? `__input_${field.id}` : field.name;
 }
